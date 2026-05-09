@@ -1,0 +1,11 @@
+/data/
+*.mv.db
+*.trace.db
+
+# Project exclude paths
+/.gradle/
+/build/
+/composeApp/build/
+/composeApp/build/classes/kotlin/desktop/main/
+/server/build/
+/server/build/classes/kotlin/main/
