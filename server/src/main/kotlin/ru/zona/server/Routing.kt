@@ -8,6 +8,7 @@ import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
@@ -52,7 +53,7 @@ fun Application.configureRouting(jwt: JwtSupport) {
                     call.respond(HttpStatusCode.Conflict, ErrorResponse("Email уже занят"))
                     return@post
                 }
-                val user = transaction { loadUser(created)!! }
+                val user = transaction { loadUserDto(created)!! }
                 val token = jwt.token(created, UserRole.STUDENT)
                 call.respond(AuthResponse(token, user))
             }
@@ -72,15 +73,110 @@ fun Application.configureRouting(jwt: JwtSupport) {
                 }
                 val id = row[Users.id].value
                 val role = row[Users.role]
-                val user = transaction { loadUser(id)!! }
+                val user = transaction { loadUserDto(id)!! }
                 call.respond(AuthResponse(jwt.token(id, role), user))
             }
 
             authenticate("jwt") {
                 get("/me") {
                     val p = call.principal<ZonaPrincipal>()!!
-                    val u = transaction { loadUser(p.userId)!! }
+                    val u = transaction { loadUserDto(p.userId)!! }
                     call.respond(u)
+                }
+
+                patch("/me") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    val body = call.receive<UpdateProfileRequest>()
+                    val err =
+                        updateUserProfile(
+                            p.userId,
+                            body.displayName,
+                            body.bio,
+                            body.languages,
+                            body.level,
+                            body.avatarBase64,
+                        )
+                    if (err != null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(err))
+                        return@patch
+                    }
+                    call.respond(transaction { loadUserDto(p.userId)!! })
+                }
+
+                get("/users/{id}/profile") {
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@get
+                    }
+                    val profile = transaction { loadPublicProfile(id) }
+                    if (profile == null) {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse("Пользователь не найден"))
+                    } else {
+                        call.respond(profile)
+                    }
+                }
+
+                get("/conversations") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    call.respond(transaction { listConversationsForUser(p.userId) })
+                }
+
+                get("/conversations/{id}/messages") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@get
+                    }
+                    if (!transaction { userCanAccessConversation(p.userId, id) }) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Нет доступа"))
+                        return@get
+                    }
+                    call.respond(transaction { listMessages(id) })
+                }
+
+                post("/conversations/{id}/messages") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val body = call.receive<SendMessageRequest>()
+                    val msg = transaction { sendMessage(id, p.userId, body.text) }
+                    if (msg == null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Не удалось отправить"))
+                        return@post
+                    }
+                    call.respond(msg)
+                }
+
+                post("/conversations/with/{userId}") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    val peerId = call.parameters["userId"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val convId =
+                        transaction {
+                            when (p.role) {
+                                UserRole.STUDENT -> getOrCreateConversation(p.userId, peerId)
+                                UserRole.TEACHER -> getOrCreateConversation(peerId, p.userId)
+                                else -> null
+                            }
+                        }
+                    if (convId == null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректная пара ученик–преподаватель"))
+                        return@post
+                    }
+                    call.respond(ConversationIdResponse(convId))
+                }
+
+                get("/student/schedule") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только для учеников"))
+                        return@get
+                    }
+                    call.respond(transaction { listStudentSchedule(p.userId) })
                 }
 
                 get("/courses") {
@@ -257,35 +353,59 @@ fun Application.configureRouting(jwt: JwtSupport) {
                         return@post
                     }
                     val body = call.receive<CreateLiveSessionRequest>()
-                    val owns =
-                        transaction {
-                            val c = Courses.selectAll().where(Courses.id eq body.courseId).firstOrNull()
-                            c != null && (c[Courses.teacherId].value == pr.userId || pr.role == UserRole.ADMIN)
+                    val teacherId =
+                        when {
+                            pr.role == UserRole.TEACHER -> pr.userId
+                            body.courseId != null ->
+                                transaction {
+                                    Courses
+                                        .selectAll()
+                                        .where(Courses.id eq body.courseId!!)
+                                        .firstOrNull()
+                                        ?.get(Courses.teacherId)
+                                        ?.value
+                                }
+                            else -> null
                         }
-                    if (!owns) {
-                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Курс не ваш"))
+                    if (teacherId == null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Укажите курс или войдите как преподаватель"))
                         return@post
                     }
-                    val teacherId =
-                        transaction {
-                            Courses
-                                .selectAll()
-                                .where(Courses.id eq body.courseId)
-                                .first()[Courses.teacherId]
-                                .value
+                    if (body.courseId != null) {
+                        val owns =
+                            transaction {
+                                val c = Courses.selectAll().where(Courses.id eq body.courseId!!).firstOrNull()
+                                c != null && (c[Courses.teacherId].value == pr.userId || pr.role == UserRole.ADMIN)
+                            }
+                        if (!owns) {
+                            call.respond(HttpStatusCode.Forbidden, ErrorResponse("Курс не ваш"))
+                            return@post
                         }
+                    }
                     val sid =
                         transaction {
                             (LiveSessions.insert {
                                 it[LiveSessions.courseId] = body.courseId
                                 it[LiveSessions.teacherId] = teacherId
                                 it[LiveSessions.title] = body.title.trim()
+                                it[LiveSessions.description] = body.description.trim()
+                                it[LiveSessions.imageBase64] = body.imageBase64?.trim()?.ifBlank { null }
                                 it[LiveSessions.startsAtEpochMs] = body.startsAtEpochMs
                                 it[LiveSessions.durationMinutes] = body.durationMinutes
                                 it[LiveSessions.maxStudents] = body.maxStudents
                             } get LiveSessions.id).value
                         }
                     call.respond(transaction { loadSession(sid, pr.userId)!! })
+                }
+
+                get("/teacher/sessions") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.TEACHER && p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только преподаватель"))
+                        return@get
+                    }
+                    val tid = if (p.role == UserRole.TEACHER) p.userId else p.userId
+                    call.respond(transaction { listTeacherGroupSessions(tid) })
                 }
 
                 post("/sessions/{id}/book") {
@@ -328,19 +448,16 @@ fun Application.configureRouting(jwt: JwtSupport) {
                 }
 
                 get("/teachers") {
-                    val teachers =
-                        transaction {
-                            Users
-                                .selectAll()
-                                .where(Users.role eq UserRole.TEACHER)
-                                .map {
-                                    TeacherShortDto(
-                                        id = it[Users.id].value,
-                                        name = it[Users.displayName],
-                                    )
-                                }
-                        }
-                    call.respond(teachers)
+                    call.respond(transaction { listTeacherProfiles() })
+                }
+
+                get("/teachers/{id}/sessions") {
+                    val teacherId = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@get
+                    }
+                    val p = call.principal<ZonaPrincipal>()!!
+                    call.respond(transaction { listTeacherPublicGroupSessions(teacherId) })
                 }
 
                 post("/teachers/{id}/booking-requests") {
@@ -354,12 +471,72 @@ fun Application.configureRouting(jwt: JwtSupport) {
                         return@post
                     }
                     val body = call.receive<CreateTeacherBookingRequest>()
-                    val ok = transaction { createTeacherBookingRequest(p.userId, teacherId, body.scheduledAtEpochMs) }
+                    val ok =
+                        transaction {
+                            createTeacherBookingRequest(
+                                p.userId,
+                                teacherId,
+                                body.scheduledAtEpochMs,
+                                body.durationMinutes,
+                            )
+                        }
                     if (!ok) {
-                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Не удалось создать заявку"))
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ErrorResponse("Выберите свободный слот из расписания преподавателя"),
+                        )
                         return@post
                     }
                     call.respond(ErrorResponse("Заявка отправлена преподавателю"))
+                }
+
+                get("/teachers/{id}/booking-slots") {
+                    val teacherId = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@get
+                    }
+                    val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 14
+                    val durationMinutes = call.request.queryParameters["durationMinutes"]?.toIntOrNull() ?: 60
+                    val slots = transaction { listTeacherBookingSlots(teacherId, days, durationMinutes) }
+                    call.respond(slots)
+                }
+
+                get("/teacher/availability") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.TEACHER && p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только преподаватель"))
+                        return@get
+                    }
+                    val bundle =
+                        transaction {
+                            TeacherAvailabilityDto(
+                                ranges = getTeacherAvailability(p.userId),
+                                allowedDurationMinutes = getTeacherAllowedDurations(p.userId),
+                            )
+                        }
+                    call.respond(bundle)
+                }
+
+                post("/teacher/availability") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.TEACHER && p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только преподаватель"))
+                        return@post
+                    }
+                    val body = call.receive<ReplaceAvailabilityRequest>()
+                    val ok =
+                        transaction {
+                            replaceTeacherAvailability(
+                                p.userId,
+                                body.ranges,
+                                body.allowedDurationMinutes,
+                            )
+                        }
+                    if (!ok) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректное расписание"))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Расписание сохранено"))
                 }
 
                 get("/teacher/booking-requests") {
@@ -382,12 +559,17 @@ fun Application.configureRouting(jwt: JwtSupport) {
                         call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id заявки"))
                         return@post
                     }
-                    val ok = transaction { updateBookingRequestStatus(p.userId, requestId, BookingStatus.CONFIRMED) }
-                    if (!ok) {
+                    val result = transaction { updateBookingRequestStatus(p.userId, requestId, BookingStatus.CONFIRMED) }
+                    if (!result.first) {
                         call.respond(HttpStatusCode.NotFound, ErrorResponse("Заявка не найдена"))
                         return@post
                     }
-                    call.respond(ErrorResponse("Заявка подтверждена"))
+                    val convId = result.second
+                    if (convId == null) {
+                        call.respond(HttpStatusCode.InternalServerError, ErrorResponse("Не удалось открыть чат"))
+                        return@post
+                    }
+                    call.respond(ConfirmBookingResponse("Заявка подтверждена", convId))
                 }
 
                 post("/teacher/booking-requests/{id}/decline") {
@@ -400,7 +582,7 @@ fun Application.configureRouting(jwt: JwtSupport) {
                         call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id заявки"))
                         return@post
                     }
-                    val ok = transaction { updateBookingRequestStatus(p.userId, requestId, BookingStatus.DECLINED) }
+                    val (ok, _) = transaction { updateBookingRequestStatus(p.userId, requestId, BookingStatus.DECLINED) }
                     if (!ok) {
                         call.respond(HttpStatusCode.NotFound, ErrorResponse("Заявка не найдена"))
                         return@post
@@ -466,9 +648,194 @@ fun Application.configureRouting(jwt: JwtSupport) {
                     call.respond(list)
                 }
 
+                get("/student/assignments") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только ученик"))
+                        return@get
+                    }
+                    val list = transaction { listAssignmentsForStudent(p.userId) }
+                    call.respond(list)
+                }
+
+                post("/student/assignments/{id}/submit") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только ученик"))
+                        return@post
+                    }
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val body = call.receive<UpdateTextRequest>()
+                    val ok = transaction { submitAssignment(p.userId, id, body.text.trim()) }
+                    if (!ok) {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse("Задание не найдено"))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Ответ отправлен"))
+                }
+
+                get("/teacher/assignments") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.TEACHER && p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только преподаватель"))
+                        return@get
+                    }
+                    val list = transaction { listAssignmentsForTeacher(p.userId) }
+                    call.respond(list)
+                }
+
+                post("/teacher/students/{id}/assignments") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.TEACHER && p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только преподаватель"))
+                        return@post
+                    }
+                    val studentId = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id ученика"))
+                        return@post
+                    }
+                    val body = call.receive<CreateAssignmentRequest>()
+                    val created =
+                        transaction {
+                            createAssignment(
+                                p.userId,
+                                studentId,
+                                body.title.trim(),
+                                body.description.trim(),
+                                body.deadlineEpochMs,
+                            )
+                        }
+                    if (created == null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Не удалось создать задание"))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Задание создано"))
+                }
+
+                post("/student/homework/{teacherId}/submit") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только ученик"))
+                        return@post
+                    }
+                    val teacherId = call.parameters["teacherId"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id преподавателя"))
+                        return@post
+                    }
+                    val body = call.receive<UpdateTextRequest>()
+                    val ok = transaction { submitStudentHomework(p.userId, teacherId, body.text.trim()) }
+                    if (!ok) {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse("Нет домашнего задания от этого преподавателя"))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Ответ отправлен"))
+                }
+
                 get("/leaderboard") {
                     val list = transaction { leaderboard() }
                     call.respond(list)
+                }
+
+                get("/student/teacher-application") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только для учеников"))
+                        return@get
+                    }
+                    val app = getStudentTeacherApplication(p.userId)
+                    if (app == null) {
+                        call.respond(HttpStatusCode.NotFound, ErrorResponse("Заявка не найдена"))
+                    } else {
+                        call.respond(app)
+                    }
+                }
+
+                post("/student/teacher-application") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.STUDENT) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только для учеников"))
+                        return@post
+                    }
+                    val body = call.receive<SubmitTeacherApplicationRequest>()
+                    val err =
+                        submitTeacherApplication(
+                            p.userId,
+                            body.motivation,
+                            body.attachments,
+                        )
+                    if (err != null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(err))
+                        return@post
+                    }
+                    call.respond(getStudentTeacherApplication(p.userId)!!)
+                }
+
+                get("/admin/teacher-applications") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только админ"))
+                        return@get
+                    }
+                    call.respond(listTeacherApplicationsForAdmin())
+                }
+
+                post("/admin/teacher-applications/{id}/approve") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только админ"))
+                        return@post
+                    }
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val err = adminApproveTeacherApplication(id)
+                    if (err != null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(err))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Преподаватель одобрен"))
+                }
+
+                post("/admin/teacher-applications/{id}/reject") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только админ"))
+                        return@post
+                    }
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val body = runCatching { call.receive<AdminTeacherApplicationActionRequest>() }.getOrNull()
+                    val err = adminRejectTeacherApplication(id, body?.message)
+                    if (err != null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(err))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Заявка отклонена"))
+                }
+
+                post("/admin/teacher-applications/{id}/request-info") {
+                    val p = call.principal<ZonaPrincipal>()!!
+                    if (p.role != UserRole.ADMIN) {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("Только админ"))
+                        return@post
+                    }
+                    val id = call.parameters["id"]?.toLongOrNull() ?: run {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("Некорректный id"))
+                        return@post
+                    }
+                    val body = call.receive<AdminTeacherApplicationActionRequest>()
+                    val err = adminRequestTeacherApplicationInfo(id, body.message)
+                    if (err != null) {
+                        call.respond(HttpStatusCode.BadRequest, ErrorResponse(err))
+                        return@post
+                    }
+                    call.respond(ErrorResponse("Запрошены уточнения"))
                 }
 
                 get("/admin/users") {
@@ -521,26 +888,12 @@ fun Application.configureRouting(jwt: JwtSupport) {
                         call.respond(HttpStatusCode.Conflict, ErrorResponse("Email занят"))
                         return@post
                     }
-                    call.respond(transaction { loadUser(created)!! })
+                    call.respond(transaction { loadUserDto(created)!! })
                 }
             }
         }
     }
 }
-
-private fun loadUser(id: Long): UserDto? =
-    Users
-        .selectAll()
-        .where(Users.id eq id)
-        .firstOrNull()
-        ?.let {
-            UserDto(
-                id = it[Users.id].value,
-                email = it[Users.email],
-                displayName = it[Users.displayName],
-                role = it[Users.role].name,
-            )
-        }
 
 private fun loadCourse(
     id: Long,
@@ -729,39 +1082,7 @@ private fun loadSession(
     viewerId: Long,
 ): LiveSessionDto? {
     val s = LiveSessions.selectAll().where(LiveSessions.id eq id).firstOrNull() ?: return null
-    val course =
-        Courses
-            .selectAll()
-            .where(Courses.id eq s[LiveSessions.courseId].value)
-            .first()
-    val teacher =
-        Users
-            .selectAll()
-            .where(Users.id eq s[LiveSessions.teacherId].value)
-            .first()
-    val booked =
-        SessionBookings
-            .selectAll()
-            .where(SessionBookings.sessionId eq id)
-            .count()
-    val mine =
-        SessionBookings
-            .selectAll()
-            .where(SessionBookings.sessionId eq id and (SessionBookings.studentId eq viewerId))
-            .any()
-    return LiveSessionDto(
-        id = s[LiveSessions.id].value,
-        courseId = s[LiveSessions.courseId].value,
-        courseTitle = course[Courses.title],
-        teacherId = s[LiveSessions.teacherId].value,
-        teacherName = teacher[Users.displayName],
-        title = s[LiveSessions.title],
-        startsAtEpochMs = s[LiveSessions.startsAtEpochMs],
-        durationMinutes = s[LiveSessions.durationMinutes],
-        maxStudents = s[LiveSessions.maxStudents],
-        bookedCount = booked.toInt(),
-        bookedByMe = mine,
-    )
+    return loadSessionRow(s, viewerId)
 }
 
 private fun listLiveSessions(viewerId: Long): List<LiveSessionDto> =
@@ -774,6 +1095,7 @@ private fun createTeacherBookingRequest(
     studentId: Long,
     teacherId: Long,
     scheduledAtEpochMs: Long,
+    durationMinutes: Int,
 ): Boolean {
     val teacher =
         Users
@@ -785,10 +1107,12 @@ private fun createTeacherBookingRequest(
             .selectAll()
             .where((Users.id eq studentId) and (Users.role eq UserRole.STUDENT))
             .firstOrNull() ?: return false
+    if (!isSlotAvailableForTeacher(teacherId, scheduledAtEpochMs, durationMinutes)) return false
     TeacherBookingRequests.insert {
         it[TeacherBookingRequests.studentId] = student[Users.id].value
         it[TeacherBookingRequests.teacherId] = teacher[Users.id].value
         it[TeacherBookingRequests.scheduledAtEpochMs] = scheduledAtEpochMs
+        it[TeacherBookingRequests.durationMinutes] = durationMinutes
         it[TeacherBookingRequests.status] = BookingStatus.PENDING
     }
     return true
@@ -810,6 +1134,7 @@ private fun listBookingRequestsForTeacher(teacherId: Long): List<TeacherBookingR
                 teacherId = teacherId,
                 teacherName = teacherName,
                 scheduledAtEpochMs = it[TeacherBookingRequests.scheduledAtEpochMs],
+                durationMinutes = it[TeacherBookingRequests.durationMinutes],
                 status = it[TeacherBookingRequests.status].name,
             )
         }
@@ -819,16 +1144,21 @@ private fun updateBookingRequestStatus(
     teacherId: Long,
     requestId: Long,
     status: BookingStatus,
-): Boolean {
+): Pair<Boolean, Long?> {
     val req =
         TeacherBookingRequests
             .selectAll()
             .where((TeacherBookingRequests.id eq requestId) and (TeacherBookingRequests.teacherId eq teacherId))
-            .firstOrNull() ?: return false
+            .firstOrNull() ?: return false to null
     TeacherBookingRequests.update({ TeacherBookingRequests.id eq req[TeacherBookingRequests.id].value }) {
         it[TeacherBookingRequests.status] = status
     }
-    return true
+    if (status == BookingStatus.CONFIRMED) {
+        val studentId = req[TeacherBookingRequests.studentId].value
+        val convId = getOrCreateConversation(studentId, teacherId)
+        return true to convId
+    }
+    return true to null
 }
 
 private fun isStudentOfTeacher(
@@ -909,31 +1239,47 @@ private fun listTeacherStudents(teacherId: Long): List<TeacherStudentDto> {
             courseProgress = progress,
             lastActivityEpochMs = lastActivity,
             teacherHistory = teacherHistoryForStudent(sid),
-            homework = meta.first,
-            notes = meta.second,
+            homework = meta.homework,
+            homeworkResponse = meta.homeworkResponse,
+            homeworkSubmittedAtEpochMs = meta.homeworkSubmittedAtEpochMs,
+            notes = meta.notes,
         )
     }
 }
 
+private data class TeacherStudentMetaSnapshot(
+    val homework: String,
+    val homeworkResponse: String,
+    val homeworkSubmittedAtEpochMs: Long?,
+    val notes: String,
+)
+
 private fun ensureMetaRecord(
     teacherId: Long,
     studentId: Long,
-): Pair<String, String> {
+): TeacherStudentMetaSnapshot {
     val existing =
         TeacherStudentMeta
             .selectAll()
             .where((TeacherStudentMeta.teacherId eq teacherId) and (TeacherStudentMeta.studentId eq studentId))
             .firstOrNull()
     if (existing != null) {
-        return existing[TeacherStudentMeta.homework] to existing[TeacherStudentMeta.notes]
+        return TeacherStudentMetaSnapshot(
+            homework = existing[TeacherStudentMeta.homework],
+            homeworkResponse = existing[TeacherStudentMeta.homeworkResponse],
+            homeworkSubmittedAtEpochMs = existing[TeacherStudentMeta.homeworkSubmittedAtEpochMs],
+            notes = existing[TeacherStudentMeta.notes],
+        )
     }
     TeacherStudentMeta.insert {
         it[TeacherStudentMeta.teacherId] = teacherId
         it[TeacherStudentMeta.studentId] = studentId
         it[TeacherStudentMeta.homework] = ""
+        it[TeacherStudentMeta.homeworkResponse] = ""
+        it[TeacherStudentMeta.homeworkSubmittedAtEpochMs] = null
         it[TeacherStudentMeta.notes] = ""
     }
-    return "" to ""
+    return TeacherStudentMetaSnapshot("", "", null, "")
 }
 
 private fun setTeacherHomework(
@@ -945,6 +1291,24 @@ private fun setTeacherHomework(
     ensureMetaRecord(teacherId, studentId)
     TeacherStudentMeta.update({ (TeacherStudentMeta.teacherId eq teacherId) and (TeacherStudentMeta.studentId eq studentId) }) {
         it[TeacherStudentMeta.homework] = text
+        it[TeacherStudentMeta.homeworkResponse] = ""
+        it[TeacherStudentMeta.homeworkSubmittedAtEpochMs] = null
+    }
+    return true
+}
+
+private fun submitStudentHomework(
+    studentId: Long,
+    teacherId: Long,
+    response: String,
+): Boolean {
+    if (response.isBlank()) return false
+    if (!isStudentOfTeacher(teacherId, studentId)) return false
+    val meta = ensureMetaRecord(teacherId, studentId)
+    if (meta.homework.isBlank()) return false
+    TeacherStudentMeta.update({ (TeacherStudentMeta.teacherId eq teacherId) and (TeacherStudentMeta.studentId eq studentId) }) {
+        it[TeacherStudentMeta.homeworkResponse] = response
+        it[TeacherStudentMeta.homeworkSubmittedAtEpochMs] = System.currentTimeMillis()
     }
     return true
 }
@@ -974,6 +1338,8 @@ private fun listHomeworkForStudent(studentId: Long): List<StudentHomeworkDto> {
             teacherId = it[TeacherStudentMeta.teacherId].value,
             teacherName = it[Users.displayName],
             homework = it[TeacherStudentMeta.homework],
+            studentResponse = it[TeacherStudentMeta.homeworkResponse],
+            submittedAtEpochMs = it[TeacherStudentMeta.homeworkSubmittedAtEpochMs],
         )
     }.filter { it.homework.isNotBlank() }
 }

@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -34,14 +36,21 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.hilt.android)
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
+                // Реализация SLF4J для ktor-client-logging (убирает NOP warning при запуске desktop)
+                implementation(libs.slf4j.simple)
             }
         }
     }
+}
+
+dependencies {
+    add("kspAndroid", libs.hilt.compiler)
 }
 
 android {

@@ -1,45 +1,53 @@
-# Zona (Compose Multiplatform)
+# Zona — языковая школа (диплом)
 
-Learning app with roles (student/teacher), tests, progress, homework, and live sessions.
+Кроссплатформенное приложение **Kotlin Multiplatform + Compose** с backend **Ktor**.
 
-## Quick Start (No PostgreSQL)
+## Возможности
 
-1. Start backend server (H2 in-file DB):
+- **Ученик:** каталог курсов, «Мои курсы» с прогрессом, уроки и упражнения (XP), домашка с отправкой ответа, расписание живых занятий, запись к преподавателю, рейтинг.
+- **Преподаватель:** ученики и заявки, расписание, назначение ДЗ, заметки, **создание курсов и уроков**.
+- **Админ:** список пользователей.
+- Сохранение входа (токен) на Android и Desktop.
+
+## Дизайн
+
+Фирменная тема Zona (бирюза + янтарный акцент), единые карточки, шапки экранов, snackbar вместо всплывающих диалогов.
+
+## Запуск
 
 ```powershell
 cd "c:\Users\germa\OneDrive\Рабочий стол\диплом"
 .\scripts\run-server.ps1
 ```
 
-2. Verify API is reachable:
+В другом терминале:
 
 ```powershell
-.\scripts\check-api.ps1
+.\gradlew.bat :composeApp:run          # Desktop
+# или запуск Android из Android Studio (эмулятор → http://10.0.2.2:8080)
 ```
 
-3. Start client:
-- Desktop: `.\gradlew.bat :composeApp:run`
-- Android emulator: run app from Android Studio.
+Проверка API: `.\scripts\check-api.ps1`
 
-## Important for Android Emulator
+## Демо-аккаунты
 
-- Emulator must use `http://10.0.2.2:8080` to reach server on your PC.
-- Server must be running before login.
-- If login times out, allow Java in Windows Firewall for port `8080`.
+| Роль | Email | Пароль |
+|------|-------|--------|
+| Ученик | student@zona.local | student123 |
+| Преподаватель | teacher@zona.local | teacher123 |
+| Админ | admin@zona.local | admin123 |
 
-## Demo Accounts
+## Обновить демо-данные в БД
 
-- `admin@zona.local` / `admin123`
-- `teacher@zona.local` / `teacher123`
-- `student@zona.local` / `student123`
+Если сервер уже запускался со старой базой H2, удалите папку `data/zona` в корне проекта и перезапустите сервер — подтянутся новые курсы (английский, испанский, китайский) и пример домашки.
 
-## Optional: PostgreSQL Later
+## Структура клиента
 
-If needed, set:
-
-```powershell
-$env:ZONA_JDBC_URL = "jdbc:postgresql://localhost:5432/zona"
-$env:ZONA_DB_USER = "zona"
-$env:ZONA_DB_PASSWORD = "zona"
-.\gradlew.bat :server:run
+```
+composeApp/.../zona/
+  ZonaApp.kt              — навигация
+  ui/theme/               — ZonaTheme, цвета, типографика
+  ui/components/          — карточки, кнопки, CourseCard
+  ui/screens/             — экраны (auth, course, student, teacher, admin)
+  TokenStorage.kt         — persist JWT
 ```

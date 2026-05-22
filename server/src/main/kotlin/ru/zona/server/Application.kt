@@ -32,7 +32,13 @@ fun Application.module() {
     val dbUser = System.getenv("ZONA_DB_USER") ?: if (isH2) "sa" else "zona"
     val dbPassword = System.getenv("ZONA_DB_PASSWORD") ?: if (isH2) "" else "zona"
     initDatabase(jdbcUrl, dbUser, dbPassword)
-    seedIfEmpty()
+    when (System.getenv("ZONA_RESET_DB")?.lowercase()) {
+        "1", "true", "yes" -> {
+            println("ZONA: сброс БД (ZONA_RESET_DB) — удаление данных и seed…")
+            resetDatabase()
+        }
+        else -> seedIfEmpty()
+    }
 
     val jwtSecret = System.getenv("ZONA_JWT_SECRET") ?: "dev-zona-secret-change-me-32bytes-min!!"
     val jwt = JwtSupport(jwtSecret)

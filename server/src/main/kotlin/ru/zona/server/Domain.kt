@@ -18,3 +18,10 @@ enum class BookingStatus {
     CONFIRMED,
     DECLINED,
 }
+
+enum class TeacherApplicationStatus {
+    PENDING,
+    NEED_INFO,
+    APPROVED,
+    REJECTED,
+}
