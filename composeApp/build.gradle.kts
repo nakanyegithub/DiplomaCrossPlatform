@@ -1,6 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -22,14 +21,6 @@ kotlin {
         browser {
             commonWebpackConfig {
                 outputFileName = "composeApp.js"
-                devServerProperty.set(
-                    KotlinWebpackConfig.DevServer().apply {
-                        static = (static ?: mutableListOf()).apply {
-                            add(rootDir.path)
-                            add(projectDir.path)
-                        }
-                    },
-                )
             }
         }
         binaries.executable()
@@ -64,18 +55,16 @@ kotlin {
             implementation(libs.androidx.appcompat)
             implementation(libs.ktor.client.okhttp)
         }
-        val desktopMain by getting {
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(libs.ktor.client.cio)
-                implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.slf4j.simple)
-            }
+        val desktopMain by getting
+        desktopMain.dependencies {
+            implementation(compose.desktop.currentOs)
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.slf4j.simple)
         }
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
-            }
+        val wasmJsMain by getting
+        wasmJsMain.dependencies {
+            implementation(libs.ktor.client.js)
         }
     }
 }

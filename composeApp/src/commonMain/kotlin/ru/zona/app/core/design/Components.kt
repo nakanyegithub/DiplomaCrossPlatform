@@ -43,9 +43,9 @@ fun ZonaCard(
 @Composable
 fun ZonaPrimaryButton(
     text: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onClick: () -> Unit,
 ) {
     Button(
         onClick = onClick,
@@ -60,9 +60,9 @@ fun ZonaPrimaryButton(
 @Composable
 fun ZonaSecondaryButton(
     text: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onClick: () -> Unit,
 ) {
     OutlinedButton(
         onClick = onClick,
@@ -101,7 +101,11 @@ fun MessageState(
                 textAlign = TextAlign.Center,
             )
             if (actionText != null && onAction != null) {
-                ZonaPrimaryButton(actionText, onAction, Modifier.padding(top = 8.dp))
+                ZonaPrimaryButton(
+                    text = actionText,
+                    modifier = Modifier.padding(top = 8.dp),
+                    onClick = onAction,
+                )
             }
         }
     }
