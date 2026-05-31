@@ -1,4 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -6,8 +8,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
-    alias(libs.plugins.hilt)
-    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -16,49 +16,76 @@ kotlin {
     androidTarget()
     jvm("desktop")
 
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        moduleName = "composeApp"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "composeApp.js"
+                devServerProperty.set(
+                    KotlinWebpackConfig.DevServer().apply {
+                        static = (static ?: mutableListOf()).apply {
+                            add(rootDir.path)
+                            add(projectDir.path)
+                        }
+                    },
+                )
+            }
+        }
+        binaries.executable()
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
+            implementation(compose.components.resources)
             implementation(compose.ui)
 
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
+
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.coroutines)
+
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.appcompat)
             implementation(libs.ktor.client.okhttp)
-            implementation(libs.hilt.android)
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.cio)
-                // Реализация SLF4J для ktor-client-logging (убирает NOP warning при запуске desktop)
+                implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.slf4j.simple)
+            }
+        }
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
             }
         }
     }
 }
 
-dependencies {
-    add("kspAndroid", libs.hilt.compiler)
-}
-
 android {
-    namespace = "ru.diploma.crossplatform"
+    namespace = "ru.zona.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ru.diploma.crossplatform"
+        applicationId = "ru.zona.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
@@ -83,10 +110,10 @@ android {
 
 compose.desktop {
     application {
-        mainClass = "ru.diploma.crossplatform.MainKt"
+        mainClass = "ru.zona.app.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Dmg, TargetFormat.Deb)
-            packageName = "DiplomaCrossPlatform"
+            packageName = "Zona"
             packageVersion = "1.0.0"
         }
     }
