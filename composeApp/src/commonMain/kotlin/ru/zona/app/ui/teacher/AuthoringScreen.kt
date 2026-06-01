@@ -80,16 +80,19 @@ fun AuthoringScreen(
                 }
             }
             if (state.myCourses.isNotEmpty()) {
-                Text("Созданные курсы (нажмите, чтобы добавить уроки)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Мои курсы", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 state.myCourses.forEach { c ->
-                    ZonaCard(Modifier.fillMaxWidth(), onClick = { onEditCourse(c.id, c.title) }) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(c.coverEmoji, style = MaterialTheme.typography.headlineSmall)
-                            Column(Modifier.weight(1f)) {
-                                Text(c.title, style = MaterialTheme.typography.titleSmall)
-                                Text("${c.lessonCount} уроков · нажмите для редактирования", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ZonaCard(Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(c.coverEmoji, style = MaterialTheme.typography.headlineSmall)
+                                Column(Modifier.weight(1f)) {
+                                    Text(c.title, style = MaterialTheme.typography.titleSmall)
+                                    Text("${c.lessonCount} уроков", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                ZonaBadge(formatPrice(c.priceCents))
                             }
-                            ZonaBadge(formatPrice(c.priceCents))
+                            ZonaPrimaryButton("📚 Программа курса (уроки и задания)") { onEditCourse(c.id, c.title) }
                         }
                     }
                 }
