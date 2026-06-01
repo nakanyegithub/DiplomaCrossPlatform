@@ -82,14 +82,14 @@ fun MainShell(
     val tabs = remember(user.role) {
         buildList {
             add(TabItem("catalog", "Курсы", Icons.Default.School))
-            add(TabItem("cards", "Карточки", Icons.Default.Style))
+            add(TabItem("cards", "Карты", Icons.Default.Style))
             add(TabItem("sessions", "Занятия", Icons.Default.Event))
             add(TabItem("chat", "Чат", Icons.Default.Chat))
             if (user.role == UserRole.TEACHER) {
-                add(TabItem("teach", "Курсы+", Icons.Outlined.Add))
-                add(TabItem("host", "Провести", Icons.Default.Event))
+                add(TabItem("teach", "Создать", Icons.Outlined.Add))
+                add(TabItem("host", "Урок", Icons.Default.Event))
             }
-            if (user.role == UserRole.ADMIN) add(TabItem("admin", "Модерация", Icons.Default.AdminPanelSettings))
+            if (user.role == UserRole.ADMIN) add(TabItem("admin", "Заявки", Icons.Default.AdminPanelSettings))
             add(TabItem("profile", "Профиль", Icons.Default.Person))
         }
     }
@@ -119,7 +119,15 @@ fun MainShell(
                             selected = tabId == tab.id,
                             onClick = { tabId = tab.id },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) },
+                            label = {
+                                Text(
+                                    tab.label,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
