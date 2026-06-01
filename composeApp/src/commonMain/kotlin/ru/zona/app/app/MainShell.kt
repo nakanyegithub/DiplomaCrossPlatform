@@ -65,6 +65,7 @@ import ru.zona.app.ui.teacher.ApplicationScreen
 import ru.zona.app.ui.teacher.AuthoringScreen
 import ru.zona.app.ui.teacher.CourseEditorScreen
 import ru.zona.app.ui.teacher.TeachersScreen
+import ru.zona.app.ui.teacher.TeacherProfileScreen
 import ru.zona.app.ui.wallet.WalletScreen
 
 private data class TabItem(val id: String, val label: String, val icon: ImageVector)
@@ -83,7 +84,6 @@ fun MainShell(
     val tabs = remember(user.role) {
         buildList {
             add(TabItem("catalog", "Курсы", Icons.Default.School))
-            add(TabItem("teachers", "Наставники", Icons.Default.Person))
             add(TabItem("cards", "Карты", Icons.Default.Style))
             add(TabItem("sessions", "Занятия", Icons.Default.Event))
             add(TabItem("chat", "Чат", Icons.Default.Chat))
@@ -108,7 +108,6 @@ fun MainShell(
     val authoringStore = remember { AuthoringStore(graph.learningRepository, scope) }
     val createSessionStore = remember { CreateSessionStore(graph.sessionRepository, scope) }
     val adminStore = remember { AdminStore(graph.teacherRepository, scope) }
-    val teachersStore = remember { TeachersStore(graph.teacherRepository, scope) }
 
     // Открыть (или создать) диалог с пользователем и перейти в чат.
     val openChatWith: (Long, String) -> Unit = { peerId, peerName ->
@@ -154,11 +153,10 @@ fun MainShell(
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             if (overlay != null) {
-                Overlay(graph, user, nav, overlay, onMessage)
+                Overlay(graph, user, nav, overlay, openChatWith, onMessage)
             } else {
                 when (tabId) {
                     "catalog" -> CatalogScreen(catalogStore) { c -> nav.push(Destination.CourseDetail(c.id, c.title)) }
-                    "teachers" -> TeachersScreen(teachersStore, onOpenChat = openChatWith, onMessage = onMessage)
                     "cards" -> DecksScreen(
                         store = decksStore,
                         canCreate = canCreate,
@@ -192,6 +190,7 @@ private fun Overlay(
     user: User,
     nav: NavStack,
     dest: Destination,
+    openChat: (Long, String) -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -202,6 +201,18 @@ private fun Overlay(
                 store = store,
                 onBack = { nav.pop() },
                 onOpenLesson = { lesson -> nav.push(Destination.Lesson(lesson.id, lesson.title)) },
+                onOpenTeacher = { id, name -> nav.push(Destination.TeacherProfile(id, name)) },
+                onMessage = onMessage,
+            )
+        }
+        is Destination.TeacherProfile -> {
+            val store = remember { TeachersStore(graph.teacherRepository, scope) }
+            TeacherProfileScreen(
+                teacherId = dest.teacherId,
+                name = dest.name,
+                store = store,
+                onWrite = { id, name -> openChat(id, name) },
+                onBack = { nav.pop() },
                 onMessage = onMessage,
             )
         }

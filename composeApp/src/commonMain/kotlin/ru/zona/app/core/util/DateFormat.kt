@@ -14,4 +14,10 @@ fun formatDateTime(epochMs: Long): String {
     return "$d.$mo $h:$mi"
 }
 
+/** «дд.мм.гггг» — для выбранной даты (используем UTC, т.к. DatePicker отдаёт полночь UTC). */
+fun formatDate(epochMs: Long): String {
+    val dt = Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(TimeZone.UTC)
+    return "${dt.dayOfMonth.pad()}.${dt.monthNumber.pad()}.${dt.year}"
+}
+
 private fun Int.pad(): String = if (this < 10) "0$this" else "$this"

@@ -41,6 +41,7 @@ fun CourseDetailScreen(
     store: CourseDetailStore,
     onBack: () -> Unit,
     onOpenLesson: (LessonDto) -> Unit,
+    onOpenTeacher: (Long, String) -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff ->
@@ -80,7 +81,9 @@ fun CourseDetailScreen(
                                     ZonaBadge("${course.languageTo} · ${course.level}")
                                     ZonaBadge(formatPrice(course.priceCents))
                                 }
-                                Text("Преподаватель: ${course.teacherName}", style = MaterialTheme.typography.bodySmall)
+                                androidx.compose.material3.TextButton(onClick = { onOpenTeacher(course.teacherId, course.teacherName) }) {
+                                    Text("👤 Преподаватель: ${course.teacherName} ›", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                                }
                                 if (!course.enrolled) {
                                     ZonaPrimaryButton(
                                         text = if (state.enrolling) "Записываем…" else "Записаться · ${formatPrice(course.priceCents)}",

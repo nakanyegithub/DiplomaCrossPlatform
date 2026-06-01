@@ -12,6 +12,9 @@ class LearningRepositoryImpl(private val api: LearningApi) : LearningRepository 
     override suspend fun myCourses(): Outcome<List<CourseDto>> =
         safeApiCall({ api.myCourses() }, { it.body() })
 
+    override suspend fun teachingCourses(): Outcome<List<CourseDto>> =
+        safeApiCall({ api.teachingCourses() }, { it.body() })
+
     override suspend fun detail(courseId: Long): Outcome<CourseDetailDto> =
         safeApiCall({ api.detail(courseId) }, { it.body() })
 

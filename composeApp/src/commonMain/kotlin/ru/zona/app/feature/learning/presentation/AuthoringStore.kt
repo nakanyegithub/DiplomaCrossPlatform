@@ -59,7 +59,7 @@ class AuthoringStore(
 
     private fun load() {
         scope.launch {
-            when (val r = repo.myCourses()) {
+            when (val r = repo.teachingCourses()) {
                 is Outcome.Success -> setState { it.copy(myCourses = r.data) }
                 is Outcome.Failure -> emit(AuthoringEffect.Message(r.message))
             }

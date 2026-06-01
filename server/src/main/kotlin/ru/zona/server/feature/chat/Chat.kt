@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import ru.zona.server.db.Conversations
 import ru.zona.server.db.Messages
 import ru.zona.server.db.Users
@@ -31,7 +32,7 @@ data class ConversationDto(
 )
 
 @Serializable
-data class MessageDto(val id: Long, val conversationId: Long, val senderId: Long, val text: String, val sentAt: Long)
+data class MessageDto(val id: Long, val conversationId: Long, val senderId: Long, val text: String, val sentAt: Long, val readAt: Long? = null)
 
 @Serializable
 data class SendMessageRequest(val text: String)
@@ -58,9 +59,16 @@ class ChatService {
     fun messages(conversationId: Long, userId: Long): List<MessageDto> =
         transaction {
             requireMember(conversationId, userId)
+            // Чужие непрочитанные сообщения помечаем прочитанными.
+            val now = System.currentTimeMillis()
+            Messages.update({
+                (Messages.conversationId eq conversationId) and
+                    (Messages.senderId neq userId) and
+                    (Messages.readAt.isNull())
+            }) { it[readAt] = now }
             Messages.selectAll().where { Messages.conversationId eq conversationId }
                 .orderBy(Messages.sentAt to SortOrder.ASC)
-                .map { MessageDto(it[Messages.id], conversationId, it[Messages.senderId], it[Messages.text], it[Messages.sentAt]) }
+                .map { MessageDto(it[Messages.id], conversationId, it[Messages.senderId], it[Messages.text], it[Messages.sentAt], it[Messages.readAt]) }
         }
 
     fun send(conversationId: Long, userId: Long, text: String): MessageDto =
@@ -75,7 +83,7 @@ class ChatService {
                     it[Messages.text] = text.trim()
                     it[sentAt] = now
                 }[Messages.id]
-            MessageDto(id, conversationId, userId, text.trim(), now)
+            MessageDto(id, conversationId, userId, text.trim(), now, null)
         }
 
     fun openWith(userId: Long, peerId: Long): ConversationIdDto =

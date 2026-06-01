@@ -20,6 +20,9 @@ fun Route.learningRoutes(service: LearningService) {
         get("/api/courses/my") {
             call.respond(service.myCourses(requireUserId()))
         }
+        get("/api/courses/teaching") {
+            call.respond(service.teachingCourses(requireUserId()))
+        }
         get("/api/courses/{id}") {
             val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
             call.respond(service.detail(id, requireUserId()))

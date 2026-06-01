@@ -47,6 +47,14 @@ class LearningService(
                 .mapNotNull { courseDto(it, userId) }
         }
 
+    /** Курсы, созданные преподавателем (для редактирования программы). */
+    fun teachingCourses(userId: Long): List<CourseDto> =
+        transaction {
+            Courses.selectAll().where { Courses.teacherId eq userId }
+                .orderBy(Courses.createdAt to SortOrder.DESC)
+                .mapNotNull { courseDto(it[Courses.id], userId) }
+        }
+
     fun detail(courseId: Long, userId: Long): CourseDetailDto =
         transaction {
             val course = courseDto(courseId, userId) ?: throw ApiException(HttpStatusCode.NotFound, "Курс не найден")

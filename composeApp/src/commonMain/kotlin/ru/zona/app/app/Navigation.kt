@@ -10,6 +10,7 @@ sealed interface Destination {
     data class Chat(val conversationId: Long, val peerName: String) : Destination
     data class CourseEditor(val courseId: Long, val title: String) : Destination
     data class ManageDeck(val deckId: Long, val title: String) : Destination
+    data class TeacherProfile(val teacherId: Long, val name: String) : Destination
     data object Teachers : Destination
     data object Application : Destination
     data object Wallet : Destination

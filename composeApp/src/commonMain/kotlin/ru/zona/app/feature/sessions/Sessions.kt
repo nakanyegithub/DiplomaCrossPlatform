@@ -115,8 +115,9 @@ data class CreateSessionState(
     val type: String = "GROUP",
     val title: String = "",
     val description: String = "",
-    val dayOffset: Int = 1, // через сколько дней
+    val dateMillis: Long = kotlinx.datetime.Clock.System.now().toEpochMilliseconds() + 86_400_000L, // дата (полночь UTC)
     val hour: Int = 18,
+    val minute: Int = 0,
     val durationMinutes: Int = 60,
     val capacity: Int = 6,
     val priceText: String = "",
@@ -129,8 +130,9 @@ sealed interface CreateSessionIntent {
     data class SetType(val v: String) : CreateSessionIntent
     data class SetTitle(val v: String) : CreateSessionIntent
     data class SetDescription(val v: String) : CreateSessionIntent
-    data class SetDayOffset(val v: Int) : CreateSessionIntent
+    data class SetDate(val millis: Long) : CreateSessionIntent
     data class SetHour(val v: Int) : CreateSessionIntent
+    data class SetMinute(val v: Int) : CreateSessionIntent
     data class SetDuration(val v: Int) : CreateSessionIntent
     data class SetCapacity(val v: Int) : CreateSessionIntent
     data class SetPrice(val v: String) : CreateSessionIntent
@@ -147,8 +149,9 @@ class CreateSessionStore(private val repo: SessionRepository, scope: CoroutineSc
             is CreateSessionIntent.SetType -> setState { it.copy(type = intent.v, capacity = if (intent.v == "INDIVIDUAL") 1 else 6) }
             is CreateSessionIntent.SetTitle -> setState { it.copy(title = intent.v) }
             is CreateSessionIntent.SetDescription -> setState { it.copy(description = intent.v) }
-            is CreateSessionIntent.SetDayOffset -> setState { it.copy(dayOffset = intent.v.coerceIn(0, 60)) }
+            is CreateSessionIntent.SetDate -> setState { it.copy(dateMillis = intent.millis) }
             is CreateSessionIntent.SetHour -> setState { it.copy(hour = intent.v.coerceIn(0, 23)) }
+            is CreateSessionIntent.SetMinute -> setState { it.copy(minute = ((intent.v % 60) + 60) % 60) }
             is CreateSessionIntent.SetDuration -> setState { it.copy(durationMinutes = intent.v.coerceIn(15, 240)) }
             is CreateSessionIntent.SetCapacity -> setState { it.copy(capacity = intent.v.coerceIn(1, 100)) }
             is CreateSessionIntent.SetPrice -> setState { it.copy(priceText = intent.v.filter { c -> c.isDigit() }) }
@@ -169,10 +172,8 @@ class CreateSessionStore(private val repo: SessionRepository, scope: CoroutineSc
         setState { it.copy(saving = true) }
         scope.launch {
             val dayMs = 86_400_000L
-            val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
-            val base = now + st.dayOffset * dayMs
-            // выставляем час: округляем к началу дня + hour
-            val startsAt = base - (base % dayMs) + st.hour * 3_600_000L
+            // дата (полночь) + выбранное время
+            val startsAt = (st.dateMillis - (st.dateMillis % dayMs)) + st.hour * 3_600_000L + st.minute * 60_000L
             val price = st.priceText.toLongOrNull()?.let { it * 100 }
             val req = CreateSessionRequest(
                 type = st.type,

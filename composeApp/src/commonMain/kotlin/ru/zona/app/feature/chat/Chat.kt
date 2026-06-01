@@ -17,7 +17,7 @@ import ru.zona.app.core.result.Outcome
 data class ConversationDto(val id: Long, val peerId: Long, val peerName: String, val lastMessage: String? = null, val lastAt: Long? = null)
 
 @Serializable
-data class MessageDto(val id: Long, val conversationId: Long, val senderId: Long, val text: String, val sentAt: Long)
+data class MessageDto(val id: Long, val conversationId: Long, val senderId: Long, val text: String, val sentAt: Long, val readAt: Long? = null)
 
 @Serializable
 data class SendMessageRequest(val text: String)

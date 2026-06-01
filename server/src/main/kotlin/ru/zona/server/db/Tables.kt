@@ -212,5 +212,6 @@ object Messages : Table("messages") {
     val senderId = long("sender_id").references(Users.id)
     val text = text("text")
     val sentAt = long("sent_at")
+    val readAt = long("read_at").nullable()
     override val primaryKey = PrimaryKey(id)
 }

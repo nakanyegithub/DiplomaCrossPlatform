@@ -66,6 +66,49 @@ fun TeachersScreen(
 }
 
 @Composable
+fun TeacherProfileScreen(
+    teacherId: Long,
+    name: String,
+    store: TeachersStore,
+    onWrite: (Long, String) -> Unit,
+    onBack: () -> Unit,
+    onMessage: (String) -> Unit,
+) {
+    val state by store.collectState { eff -> when (eff) { is ru.zona.app.feature.teacher.TeachersEffect.Message -> onMessage(eff.text) } }
+    LaunchedEffect(Unit) { store.dispatch(TeachersIntent.Load) }
+    val teacher = state.teachers.firstOrNull { it.id == teacherId }
+
+    Column(Modifier.fillMaxSize()) {
+        ZonaTopBar(title = name, onBack = onBack)
+        if (state.loading && teacher == null) {
+            LoadingState()
+        } else {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ZonaCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ru.zona.app.core.media.Avatar(base64 = teacher?.avatarUrl, name = name, size = 72.dp)
+                            Column(Modifier.weight(1f)) {
+                                Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                teacher?.headline?.takeIf { it.isNotBlank() }?.let {
+                                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        teacher?.ratingAvg?.let { ZonaBadge("★ ${(it * 10).toInt() / 10.0} (${teacher.ratingCount})", content = MaterialTheme.colorScheme.secondary) }
+                        teacher?.pricePerHourCents?.let { ZonaBadge("${formatPrice(it)}/час") }
+                        teacher?.bio?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                ZonaPrimaryButton("✍️ Написать сообщение") { onWrite(teacherId, name) }
+            }
+        }
+    }
+}
+
+@Composable
 private fun TeacherCard(t: TeacherDto, onChat: () -> Unit) {
     ZonaCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

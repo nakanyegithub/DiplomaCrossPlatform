@@ -16,6 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import ru.zona.app.feature.sessions.CreateSessionEffect
 import ru.zona.app.feature.sessions.CreateSessionIntent
 import ru.zona.app.feature.sessions.CreateSessionStore
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun CreateSessionScreen(
     store: CreateSessionStore,
@@ -39,6 +43,23 @@ fun CreateSessionScreen(
 ) {
     val state by store.collectState { eff -> when (eff) { is CreateSessionEffect.Message -> onMessage(eff.text) } }
     LaunchedEffect(Unit) { store.dispatch(CreateSessionIntent.Load) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val dpState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = state.dateMillis)
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    dpState.selectedDateMillis?.let { store.dispatch(CreateSessionIntent.SetDate(it)) }
+                    showDatePicker = false
+                }) { Text("ОК") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { showDatePicker = false }) { Text("Отмена") } },
+        ) {
+            androidx.compose.material3.DatePicker(state = dpState)
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Провести занятие", "Создайте групповой или индивидуальный урок")
@@ -60,8 +81,13 @@ fun CreateSessionScreen(
                         }
                         ZonaTextField(state.title, { store.dispatch(CreateSessionIntent.SetTitle(it)) }, "Название занятия")
                         ZonaTextField(state.description, { store.dispatch(CreateSessionIntent.SetDescription(it)) }, "Описание", singleLine = false, minLines = 2)
-                        Stepper("Через дней", state.dayOffset, { store.dispatch(CreateSessionIntent.SetDayOffset(it)) })
-                        Stepper("Час начала", state.hour, { store.dispatch(CreateSessionIntent.SetHour(it)) })
+
+                        Text("Дата: ${ru.zona.app.core.util.formatDate(state.dateMillis)}", style = MaterialTheme.typography.bodyMedium)
+                        ZonaSecondaryButton("📅 Выбрать дату") { showDatePicker = true }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(Modifier.weight(1f)) { Stepper("Час", state.hour, { store.dispatch(CreateSessionIntent.SetHour(it)) }) }
+                            Box(Modifier.weight(1f)) { Stepper("Мин", state.minute, { store.dispatch(CreateSessionIntent.SetMinute(it)) }, step = 5) }
+                        }
                         Stepper("Длительность (мин)", state.durationMinutes, { store.dispatch(CreateSessionIntent.SetDuration(it)) }, step = 15)
                         if (state.type == "GROUP") {
                             Stepper("Мест", state.capacity, { store.dispatch(CreateSessionIntent.SetCapacity(it)) })

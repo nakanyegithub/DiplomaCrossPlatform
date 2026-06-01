@@ -13,6 +13,7 @@ import ru.zona.app.feature.learning.data.SubmitAnswerResponse
 interface LearningRepository {
     suspend fun catalog(query: String?): Outcome<List<CourseDto>>
     suspend fun myCourses(): Outcome<List<CourseDto>>
+    suspend fun teachingCourses(): Outcome<List<CourseDto>>
     suspend fun detail(courseId: Long): Outcome<CourseDetailDto>
     suspend fun enroll(courseId: Long): Outcome<CourseDto>
     suspend fun exercises(lessonId: Long): Outcome<List<ExerciseDto>>

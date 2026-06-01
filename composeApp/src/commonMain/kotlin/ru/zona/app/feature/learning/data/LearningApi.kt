@@ -86,6 +86,8 @@ class LearningApi(private val client: HttpClient, private val baseUrl: String) {
 
     suspend fun myCourses(): HttpResponse = client.get("$baseUrl/api/courses/my")
 
+    suspend fun teachingCourses(): HttpResponse = client.get("$baseUrl/api/courses/teaching")
+
     suspend fun detail(courseId: Long): HttpResponse = client.get("$baseUrl/api/courses/$courseId")
 
     suspend fun enroll(courseId: Long): HttpResponse = client.post("$baseUrl/api/courses/$courseId/enroll")

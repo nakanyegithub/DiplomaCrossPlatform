@@ -100,12 +100,27 @@ fun ChatScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.widthIn(max = 280.dp),
                             ) {
-                                Text(
-                                    m.text,
-                                    Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    color = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
+                                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                    Text(
+                                        m.text,
+                                        color = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            ru.zona.app.core.util.formatDateTime(m.sentAt),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = (if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.7f),
+                                        )
+                                        if (mine) {
+                                            Text(
+                                                if (m.readAt != null) "✓✓" else "✓",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (m.readAt != null) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
