@@ -60,8 +60,9 @@ class AuthService(
             throw ApiException(HttpStatusCode.UnprocessableEntity, "Имя не может быть пустым")
         }
         val avatar = request.avatarUrl?.trim()
-        if (avatar != null && avatar.length > 2048) {
-            throw ApiException(HttpStatusCode.UnprocessableEntity, "Ссылка на аватар слишком длинная")
+        // base64-картинка; ограничиваем ~3 МБ исходного файла (после base64 ~4 МБ).
+        if (avatar != null && avatar.length > 4_500_000) {
+            throw ApiException(HttpStatusCode.UnprocessableEntity, "Изображение слишком большое (макс. ~3 МБ)")
         }
         val record =
             dao.updateProfile(

@@ -1,6 +1,8 @@
 package ru.zona.app.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ru.zona.app.core.media.Avatar
+import ru.zona.app.core.media.rememberImagePicker
 import ru.zona.app.core.design.LoadingState
 import ru.zona.app.core.design.ScreenHeader
 import ru.zona.app.core.design.ZonaBadge
@@ -47,6 +52,10 @@ fun ProfileScreen(
     }
     LaunchedEffect(Unit) { store.dispatch(ProfileIntent.Refresh) }
 
+    val pickAvatar = rememberImagePicker { picked ->
+        if (picked != null) store.dispatch(ProfileIntent.SetAvatarUrl(picked))
+    }
+
     val user = state.user
     val roleLabel = when (user.role) {
         UserRole.STUDENT -> "Ученик"
@@ -64,20 +73,35 @@ fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ZonaCard(Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(user.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ZonaBadge(roleLabel)
-                            ZonaBadge("⭐ ${user.xp} XP", content = MaterialTheme.colorScheme.secondary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Avatar(base64 = user.avatarUrl, name = user.displayName, size = 72.dp)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(user.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ZonaBadge(roleLabel)
+                                ZonaBadge("⭐ ${user.xp} XP", content = MaterialTheme.colorScheme.secondary)
+                            }
                         }
-                        Text(user.bio.ifBlank { "Биография не заполнена" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                if (user.bio.isNotBlank() && !state.editing) {
+                    ZonaCard(Modifier.fillMaxWidth()) {
+                        Text(user.bio, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 if (state.editing) {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Avatar(base64 = state.avatarUrl.ifBlank { null }, name = state.displayName, size = 110.dp, modifier = Modifier.clickable { pickAvatar() })
+                            ZonaSecondaryButton("Сменить фото") { pickAvatar() }
+                            if (state.avatarUrl.isNotBlank()) {
+                                Text("Нажмите, чтобы заменить", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
                     ZonaTextField(state.displayName, { store.dispatch(ProfileIntent.SetDisplayName(it)) }, "Имя")
                     ZonaTextField(state.bio, { store.dispatch(ProfileIntent.SetBio(it)) }, "О себе", singleLine = false, minLines = 3)
-                    ZonaTextField(state.avatarUrl, { store.dispatch(ProfileIntent.SetAvatarUrl(it)) }, "Ссылка на аватар (необязательно)")
                     ZonaPrimaryButton(if (state.saving) "Сохранение…" else "Сохранить", enabled = state.displayName.isNotBlank() && !state.saving) {
                         store.dispatch(ProfileIntent.Save)
                     }

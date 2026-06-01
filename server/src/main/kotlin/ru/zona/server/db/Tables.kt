@@ -35,7 +35,7 @@ object Users : Table("users") {
     val displayName = varchar("display_name", 255)
     val role = varchar("role", 32) // STUDENT | TEACHER | ADMIN
     val bio = text("bio").default("")
-    val avatarUrl = varchar("avatar_url", 2048).nullable()
+    val avatarUrl = text("avatar_url").nullable() // base64-картинка или null
     val headline = varchar("headline", 255).default("")
     val pricePerHourCents = long("price_per_hour_cents").nullable()
     val ratingSum = long("rating_sum").default(0)
