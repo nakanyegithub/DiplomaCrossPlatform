@@ -16,6 +16,7 @@ sealed interface Destination {
     data object Wallet : Destination
     data object Authoring : Destination
     data object CreateSession : Destination
+    data object BookingRequests : Destination
 }
 
 /** Простой стек навигации без сторонних библиотек — работает на всех платформах. */

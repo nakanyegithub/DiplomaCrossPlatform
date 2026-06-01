@@ -5,11 +5,14 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -36,6 +39,21 @@ data class SessionDto(
     val bookedCount: Int,
     val priceCents: Long?,
     val bookedByMe: Boolean,
+    val myStatus: String? = null, // null | PENDING | BOOKED | DECLINED
+)
+
+@Serializable
+data class BookingRequestDto(
+    val bookingId: Long,
+    val sessionId: Long,
+    val sessionTitle: String,
+    val startsAt: Long,
+    val durationMinutes: Int,
+    val priceCents: Long?,
+    val studentId: Long,
+    val studentName: String,
+    val status: String,
+    val createdAt: Long,
 )
 
 @Serializable
@@ -99,39 +117,121 @@ class SessionService(
     }
 
     fun book(sessionId: Long, userId: Long): SessionDto {
-        val price =
+        val sess = transaction {
+            val s = Sessions.selectAll().where { Sessions.id eq sessionId }.firstOrNull()
+                ?: throw ApiException(HttpStatusCode.NotFound, "Занятие не найдено")
+            if (s[Sessions.teacherId] == userId) throw ApiException(HttpStatusCode.Conflict, "Нельзя записаться на своё занятие")
+            val existing = SessionBookings.selectAll()
+                .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.studentId eq userId) and (SessionBookings.status inList listOf("BOOKED", "PENDING")) }
+                .limit(1).count() > 0
+            if (existing) throw ApiException(HttpStatusCode.Conflict, "Вы уже записаны или заявка на рассмотрении")
+            s
+        }
+        val isGroup = sess[Sessions.type] == "GROUP"
+        val teacherId = sess[Sessions.teacherId]
+        val price = sess[Sessions.priceCents] ?: 0L
+
+        if (isGroup) {
+            // Групповое — мгновенно, со списанием.
             transaction {
-                val s = Sessions.selectAll().where { Sessions.id eq sessionId }.firstOrNull()
-                    ?: throw ApiException(HttpStatusCode.NotFound, "Занятие не найдено")
-                if (s[Sessions.teacherId] == userId) throw ApiException(HttpStatusCode.Conflict, "Нельзя записаться на своё занятие")
-                val already =
-                    SessionBookings.selectAll()
-                        .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.studentId eq userId) and (SessionBookings.status eq "BOOKED") }
-                        .limit(1).count() > 0
-                if (already) throw ApiException(HttpStatusCode.Conflict, "Вы уже записаны")
                 val booked = SessionBookings.selectAll()
                     .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.status eq "BOOKED") }
                     .count().toInt()
-                if (booked >= s[Sessions.capacity]) throw ApiException(HttpStatusCode.Conflict, "Мест больше нет")
-                s[Sessions.priceCents] ?: 0L
+                if (booked >= sess[Sessions.capacity]) throw ApiException(HttpStatusCode.Conflict, "Мест больше нет")
             }
-        if (price > 0) wallet.charge(userId, price, "Занятие #$sessionId")
-        transaction {
-            SessionBookings.insert {
-                it[SessionBookings.sessionId] = sessionId
-                it[studentId] = userId
-                it[status] = "BOOKED"
-                it[paidCents] = price
-                it[createdAt] = System.currentTimeMillis()
+            if (price > 0) wallet.charge(userId, price, "Занятие #$sessionId")
+            transaction {
+                SessionBookings.insert {
+                    it[SessionBookings.sessionId] = sessionId
+                    it[studentId] = userId
+                    it[status] = "BOOKED"
+                    it[paidCents] = price
+                    it[createdAt] = System.currentTimeMillis()
+                }
             }
-        }
-        // Группа: добавляем ученика в групповой чат занятия.
-        val sess = transaction { Sessions.selectAll().where { Sessions.id eq sessionId }.first() }
-        if (sess[Sessions.type] == "GROUP") {
-            val convId = chat.ensureGroupForSession(sessionId, sess[Sessions.teacherId], sess[Sessions.title])
+            val convId = chat.ensureGroupForSession(sessionId, teacherId, sess[Sessions.title])
             chat.addParticipant(convId, userId)
+        } else {
+            // Индивидуальное — заявка (PENDING), без списания. Сразу заводим личный чат с преподом.
+            transaction {
+                SessionBookings.insert {
+                    it[SessionBookings.sessionId] = sessionId
+                    it[studentId] = userId
+                    it[status] = "PENDING"
+                    it[paidCents] = 0
+                    it[createdAt] = System.currentTimeMillis()
+                }
+            }
+            chat.directConversation(userId, teacherId)
         }
         return transaction { dto(sessionId, userId)!! }
+    }
+
+    /** Заявки на индивидуальные занятия преподавателя. */
+    fun incomingRequests(teacherId: Long): List<BookingRequestDto> =
+        transaction {
+            val myIndividual = Sessions.selectAll()
+                .where { (Sessions.teacherId eq teacherId) and (Sessions.type eq "INDIVIDUAL") }
+                .associate { it[Sessions.id] to it }
+            if (myIndividual.isEmpty()) return@transaction emptyList()
+            SessionBookings.selectAll()
+                .where { (SessionBookings.sessionId inList myIndividual.keys) and (SessionBookings.status eq "PENDING") }
+                .orderBy(SessionBookings.createdAt to SortOrder.DESC)
+                .map { b ->
+                    val s = myIndividual.getValue(b[SessionBookings.sessionId])
+                    val studentName = Users.selectAll().where { Users.id eq b[SessionBookings.studentId] }.firstOrNull()?.get(Users.displayName) ?: ""
+                    BookingRequestDto(
+                        bookingId = b[SessionBookings.id],
+                        sessionId = s[Sessions.id],
+                        sessionTitle = s[Sessions.title],
+                        startsAt = s[Sessions.startsAt],
+                        durationMinutes = s[Sessions.durationMinutes],
+                        priceCents = s[Sessions.priceCents],
+                        studentId = b[SessionBookings.studentId],
+                        studentName = studentName,
+                        status = b[SessionBookings.status],
+                        createdAt = b[SessionBookings.createdAt],
+                    )
+                }
+        }
+
+    fun acceptRequest(teacherId: Long, bookingId: Long) {
+        val (sessionId, studentId, price) = transaction {
+            val b = SessionBookings.selectAll().where { SessionBookings.id eq bookingId }.firstOrNull()
+                ?: throw ApiException(HttpStatusCode.NotFound, "Заявка не найдена")
+            val s = Sessions.selectAll().where { Sessions.id eq b[SessionBookings.sessionId] }.first()
+            if (s[Sessions.teacherId] != teacherId) throw ApiException(HttpStatusCode.Forbidden, "Это не ваше занятие")
+            if (b[SessionBookings.status] != "PENDING") throw ApiException(HttpStatusCode.Conflict, "Заявка уже обработана")
+            Triple(s[Sessions.id], b[SessionBookings.studentId], s[Sessions.priceCents] ?: 0L)
+        }
+        if (price > 0) wallet.charge(studentId, price, "Индивидуальное занятие #$sessionId")
+        transaction {
+            SessionBookings.update({ SessionBookings.id eq bookingId }) {
+                it[status] = "BOOKED"
+                it[paidCents] = price
+            }
+        }
+        chat.directConversation(studentId, teacherId)
+    }
+
+    fun declineRequest(teacherId: Long, bookingId: Long) {
+        transaction {
+            val b = SessionBookings.selectAll().where { SessionBookings.id eq bookingId }.firstOrNull()
+                ?: throw ApiException(HttpStatusCode.NotFound, "Заявка не найдена")
+            val s = Sessions.selectAll().where { Sessions.id eq b[SessionBookings.sessionId] }.first()
+            if (s[Sessions.teacherId] != teacherId) throw ApiException(HttpStatusCode.Forbidden, "Это не ваше занятие")
+            SessionBookings.update({ SessionBookings.id eq bookingId }) { it[status] = "DECLINED" }
+        }
+    }
+
+    fun deleteSession(teacherId: Long, sessionId: Long) {
+        transaction {
+            val s = Sessions.selectAll().where { Sessions.id eq sessionId }.firstOrNull()
+                ?: throw ApiException(HttpStatusCode.NotFound, "Занятие не найдено")
+            if (s[Sessions.teacherId] != teacherId) throw ApiException(HttpStatusCode.Forbidden, "Это не ваше занятие")
+            SessionBookings.deleteWhere { SessionBookings.sessionId eq sessionId }
+            Sessions.deleteWhere { Sessions.id eq sessionId }
+        }
     }
 
     private fun dto(sessionId: Long, userId: Long): SessionDto? {
@@ -140,9 +240,11 @@ class SessionService(
         val booked = SessionBookings.selectAll()
             .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.status eq "BOOKED") }
             .count().toInt()
-        val byMe = SessionBookings.selectAll()
-            .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.studentId eq userId) and (SessionBookings.status eq "BOOKED") }
-            .limit(1).count() > 0
+        val myBooking = SessionBookings.selectAll()
+            .where { (SessionBookings.sessionId eq sessionId) and (SessionBookings.studentId eq userId) and (SessionBookings.status inList listOf("BOOKED", "PENDING")) }
+            .orderBy(SessionBookings.createdAt to SortOrder.DESC)
+            .firstOrNull()
+        val myStatus = myBooking?.get(SessionBookings.status)
         return SessionDto(
             id = sessionId,
             teacherId = s[Sessions.teacherId],
@@ -155,7 +257,8 @@ class SessionService(
             capacity = s[Sessions.capacity],
             bookedCount = booked,
             priceCents = s[Sessions.priceCents],
-            bookedByMe = byMe,
+            bookedByMe = (myStatus == "BOOKED"),
+            myStatus = myStatus,
         )
     }
 }
@@ -169,6 +272,19 @@ fun Route.sessionRoutes(service: SessionService) {
         post("/api/sessions/{id}/book") {
             val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
             call.respond(service.book(id, requireUserId()))
+        }
+        delete("/api/sessions/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
+            service.deleteSession(requireUserId(), id); call.respond(HttpStatusCode.NoContent)
+        }
+        get("/api/sessions/requests") { call.respond(service.incomingRequests(requireUserId())) }
+        post("/api/sessions/requests/{bookingId}/accept") {
+            val id = call.parameters["bookingId"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "bookingId")
+            service.acceptRequest(requireUserId(), id); call.respond(HttpStatusCode.NoContent)
+        }
+        post("/api/sessions/requests/{bookingId}/decline") {
+            val id = call.parameters["bookingId"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "bookingId")
+            service.declineRequest(requireUserId(), id); call.respond(HttpStatusCode.NoContent)
         }
     }
 }

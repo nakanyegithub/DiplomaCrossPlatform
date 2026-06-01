@@ -159,6 +159,10 @@ class ChatService {
     }
 
     fun openWith(userId: Long, peerId: Long): ConversationIdDto =
+        ConversationIdDto(directConversation(userId, peerId))
+
+    /** Создаёт (или находит) личный диалог двух пользователей. Возвращает id. */
+    fun directConversation(userId: Long, peerId: Long): Long =
         transaction {
             if (peerId == userId) throw ApiException(HttpStatusCode.BadRequest, "Нельзя написать самому себе")
             Users.selectAll().where { Users.id eq peerId }.firstOrNull()
@@ -168,13 +172,13 @@ class ChatService {
             val existing = Conversations.selectAll()
                 .where { (Conversations.userA eq a) and (Conversations.userB eq b) }
                 .firstOrNull()
-            val id = existing?.get(Conversations.id)
+            existing?.get(Conversations.id)
                 ?: Conversations.insert {
                     it[userA] = a
                     it[userB] = b
+                    it[isGroup] = false
                     it[createdAt] = System.currentTimeMillis()
                 }[Conversations.id]
-            ConversationIdDto(id)
         }
 
     private fun requireMember(conversationId: Long, userId: Long) {

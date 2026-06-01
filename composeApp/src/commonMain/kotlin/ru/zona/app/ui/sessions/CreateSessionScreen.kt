@@ -45,6 +45,7 @@ fun CreateSessionScreen(
     val state by store.collectState { eff -> when (eff) { is CreateSessionEffect.Message -> onMessage(eff.text) } }
     LaunchedEffect(Unit) { store.dispatch(CreateSessionIntent.Load) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
         val dpState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = state.dateMillis)
@@ -60,6 +61,22 @@ fun CreateSessionScreen(
         ) {
             androidx.compose.material3.DatePicker(state = dpState)
         }
+    }
+
+    if (showTimePicker) {
+        val tpState = androidx.compose.material3.rememberTimePickerState(initialHour = state.hour, initialMinute = state.minute, is24Hour = true)
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    store.dispatch(CreateSessionIntent.SetHour(tpState.hour))
+                    store.dispatch(CreateSessionIntent.SetMinute(tpState.minute))
+                    showTimePicker = false
+                }) { Text("ОК") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { showTimePicker = false }) { Text("Отмена") } },
+            text = { androidx.compose.material3.TimePicker(state = tpState) },
+        )
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -83,12 +100,13 @@ fun CreateSessionScreen(
                         ZonaTextField(state.title, { store.dispatch(CreateSessionIntent.SetTitle(it)) }, "Название занятия")
                         ZonaTextField(state.description, { store.dispatch(CreateSessionIntent.SetDescription(it)) }, "Описание", singleLine = false, minLines = 2)
 
-                        Text("📅 Дата: ${ru.zona.app.core.util.formatDate(state.dateMillis)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        ZonaSecondaryButton("Выбрать дату") { showDatePicker = true }
-
-                        Text("Время начала", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Stepper("Часы", state.hour, { store.dispatch(CreateSessionIntent.SetHour(it)) })
-                        Stepper("Минуты", state.minute, { store.dispatch(CreateSessionIntent.SetMinute(it)) }, step = 5)
+                        val hh = if (state.hour < 10) "0${state.hour}" else "${state.hour}"
+                        val mm = if (state.minute < 10) "0${state.minute}" else "${state.minute}"
+                        Text("📅 ${ru.zona.app.core.util.formatDate(state.dateMillis)}  ⏰ $hh:$mm", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(Modifier.weight(1f)) { ZonaSecondaryButton("Дата") { showDatePicker = true } }
+                            Box(Modifier.weight(1f)) { ZonaSecondaryButton("Время") { showTimePicker = true } }
+                        }
 
                         Text("Длительность занятия", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val durH = state.durationMinutes / 60

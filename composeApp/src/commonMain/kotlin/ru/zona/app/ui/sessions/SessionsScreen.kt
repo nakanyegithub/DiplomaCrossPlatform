@@ -38,7 +38,9 @@ import ru.zona.app.feature.sessions.SessionsTab
 fun SessionsScreen(
     store: SessionsStore,
     canCreate: Boolean,
+    currentUserId: Long,
     onCreate: () -> Unit,
+    onOpenRequests: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff -> when (eff) { is SessionsEffect.Message -> onMessage(eff.text) } }
@@ -47,8 +49,9 @@ fun SessionsScreen(
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Занятия", "Групповые и индивидуальные уроки в прямом эфире")
         if (canCreate) {
-            Row(Modifier.padding(horizontal = 20.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ZonaPrimaryButton("➕ Провести занятие", onClick = onCreate)
+                ru.zona.app.core.design.ZonaSecondaryButton("📩 Заявки на индивидуальные занятия", onClick = onOpenRequests)
             }
         }
         TabRow(selectedTabIndex = if (state.tab == SessionsTab.Upcoming) 0 else 1, containerColor = MaterialTheme.colorScheme.background) {
@@ -65,14 +68,21 @@ fun SessionsScreen(
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(state.sessions, key = { it.id }) { s -> SessionCard(s) { store.dispatch(SessionsIntent.Book(s.id)) } }
+                    items(state.sessions, key = { it.id }) { s ->
+                        SessionCard(
+                            s = s,
+                            mine = s.teacherId == currentUserId,
+                            onBook = { store.dispatch(SessionsIntent.Book(s)) },
+                            onDelete = { store.dispatch(SessionsIntent.Delete(s.id)) },
+                        )
+                    }
                 }
         }
     }
 }
 
 @Composable
-private fun SessionCard(s: SessionDto, onBook: () -> Unit) {
+private fun SessionCard(s: SessionDto, mine: Boolean, onBook: () -> Unit, onDelete: () -> Unit) {
     ZonaCard(Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -85,10 +95,14 @@ private fun SessionCard(s: SessionDto, onBook: () -> Unit) {
                 ZonaBadge(if (s.type == "GROUP") "Группа ${s.bookedCount}/${s.capacity}" else "Индивидуально")
                 ZonaBadge(formatPrice(s.priceCents))
             }
-            if (s.bookedByMe) {
-                ZonaBadge("Вы записаны ✓", content = MaterialTheme.colorScheme.secondary)
-            } else {
-                ZonaPrimaryButton("Записаться · ${formatPrice(s.priceCents)}", onClick = onBook)
+            when {
+                mine -> ru.zona.app.core.design.ZonaSecondaryButton("🗑 Удалить занятие", onClick = onDelete)
+                s.myStatus == "BOOKED" -> ZonaBadge("Вы записаны ✓", content = MaterialTheme.colorScheme.secondary)
+                s.myStatus == "PENDING" -> ZonaBadge("⏳ Заявка на рассмотрении", content = MaterialTheme.colorScheme.tertiary)
+                else -> ZonaPrimaryButton(
+                    if (s.type == "INDIVIDUAL") "Отправить заявку · ${formatPrice(s.priceCents)}" else "Записаться · ${formatPrice(s.priceCents)}",
+                    onClick = onBook,
+                )
             }
         }
     }

@@ -165,7 +165,9 @@ fun MainShell(
                     "sessions" -> SessionsScreen(
                         store = sessionsStore,
                         canCreate = canCreate,
+                        currentUserId = user.id,
                         onCreate = { nav.push(Destination.CreateSession) },
+                        onOpenRequests = { nav.push(Destination.BookingRequests) },
                         onMessage = onMessage,
                     )
                     "chat" -> ChatListScreen(chatListStore) { c -> nav.push(Destination.Chat(c.id, c.peerName, c.isGroup)) }
@@ -262,6 +264,10 @@ private fun Overlay(
         Destination.CreateSession -> {
             val store = remember { CreateSessionStore(graph.sessionRepository, scope) }
             CreateSessionScreen(store = store, onBack = { nav.pop() }, onMessage = onMessage)
+        }
+        Destination.BookingRequests -> {
+            val store = remember { ru.zona.app.feature.sessions.BookingRequestsStore(graph.sessionRepository, scope) }
+            ru.zona.app.ui.sessions.BookingRequestsScreen(store = store, onBack = { nav.pop() }, onMessage = onMessage)
         }
     }
 }

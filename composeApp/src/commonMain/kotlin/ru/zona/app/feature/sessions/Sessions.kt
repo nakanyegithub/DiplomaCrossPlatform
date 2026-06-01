@@ -2,6 +2,7 @@ package ru.zona.app.feature.sessions
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -27,6 +28,21 @@ data class SessionDto(
     val bookedCount: Int,
     val priceCents: Long? = null,
     val bookedByMe: Boolean = false,
+    val myStatus: String? = null,
+)
+
+@Serializable
+data class BookingRequestDto(
+    val bookingId: Long,
+    val sessionId: Long,
+    val sessionTitle: String,
+    val startsAt: Long,
+    val durationMinutes: Int,
+    val priceCents: Long? = null,
+    val studentId: Long,
+    val studentName: String,
+    val status: String,
+    val createdAt: Long,
 )
 
 @Serializable
@@ -46,6 +62,10 @@ class SessionApi(private val client: HttpClient, private val baseUrl: String) {
     suspend fun teaching(): HttpResponse = client.get("$baseUrl/api/sessions/teaching")
     suspend fun create(body: CreateSessionRequest): HttpResponse = client.post("$baseUrl/api/sessions") { setBody(body) }
     suspend fun book(id: Long): HttpResponse = client.post("$baseUrl/api/sessions/$id/book")
+    suspend fun deleteSession(id: Long): HttpResponse = client.delete("$baseUrl/api/sessions/$id")
+    suspend fun requests(): HttpResponse = client.get("$baseUrl/api/sessions/requests")
+    suspend fun accept(bookingId: Long): HttpResponse = client.post("$baseUrl/api/sessions/requests/$bookingId/accept")
+    suspend fun decline(bookingId: Long): HttpResponse = client.post("$baseUrl/api/sessions/requests/$bookingId/decline")
 }
 
 interface SessionRepository {
@@ -54,6 +74,10 @@ interface SessionRepository {
     suspend fun teaching(): Outcome<List<SessionDto>>
     suspend fun create(req: CreateSessionRequest): Outcome<SessionDto>
     suspend fun book(id: Long): Outcome<SessionDto>
+    suspend fun deleteSession(id: Long): Outcome<Unit>
+    suspend fun requests(): Outcome<List<BookingRequestDto>>
+    suspend fun accept(bookingId: Long): Outcome<Unit>
+    suspend fun decline(bookingId: Long): Outcome<Unit>
 }
 
 class SessionRepositoryImpl(private val api: SessionApi) : SessionRepository {
@@ -62,6 +86,10 @@ class SessionRepositoryImpl(private val api: SessionApi) : SessionRepository {
     override suspend fun teaching() = safeApiCall({ api.teaching() }, { it.body<List<SessionDto>>() })
     override suspend fun create(req: CreateSessionRequest) = safeApiCall({ api.create(req) }, { it.body<SessionDto>() })
     override suspend fun book(id: Long) = safeApiCall({ api.book(id) }, { it.body<SessionDto>() })
+    override suspend fun deleteSession(id: Long) = safeApiCall({ api.deleteSession(id) }, { })
+    override suspend fun requests() = safeApiCall({ api.requests() }, { it.body<List<BookingRequestDto>>() })
+    override suspend fun accept(bookingId: Long) = safeApiCall({ api.accept(bookingId) }, { })
+    override suspend fun decline(bookingId: Long) = safeApiCall({ api.decline(bookingId) }, { })
 }
 
 enum class SessionsTab { Upcoming, Mine }
@@ -76,7 +104,8 @@ data class SessionsState(
 sealed interface SessionsIntent {
     data object Load : SessionsIntent
     data class SetTab(val tab: SessionsTab) : SessionsIntent
-    data class Book(val id: Long) : SessionsIntent
+    data class Book(val session: SessionDto) : SessionsIntent
+    data class Delete(val id: Long) : SessionsIntent
 }
 
 sealed interface SessionsEffect { data class Message(val text: String) : SessionsEffect }
@@ -87,7 +116,8 @@ class SessionsStore(private val repo: SessionRepository, scope: CoroutineScope) 
         when (intent) {
             SessionsIntent.Load -> load()
             is SessionsIntent.SetTab -> { setState { it.copy(tab = intent.tab) }; load() }
-            is SessionsIntent.Book -> book(intent.id)
+            is SessionsIntent.Book -> book(intent.session)
+            is SessionsIntent.Delete -> delete(intent.id)
         }
     }
     private fun load() {
@@ -100,11 +130,60 @@ class SessionsStore(private val repo: SessionRepository, scope: CoroutineScope) 
             }
         }
     }
-    private fun book(id: Long) {
+    private fun book(session: SessionDto) {
         scope.launch {
-            when (val r = repo.book(id)) {
-                is Outcome.Success -> { emit(SessionsEffect.Message("Вы записаны на занятие 🛰")); load() }
+            when (val r = repo.book(session.id)) {
+                is Outcome.Success -> {
+                    val msg = if (session.type == "INDIVIDUAL") "Заявка отправлена преподавателю ✍️ Чат открыт во вкладке «Чат»" else "Вы записаны на занятие 🛰"
+                    emit(SessionsEffect.Message(msg)); load()
+                }
                 is Outcome.Failure -> emit(SessionsEffect.Message(r.message))
+            }
+        }
+    }
+    private fun delete(id: Long) {
+        scope.launch {
+            when (val r = repo.deleteSession(id)) {
+                is Outcome.Success -> { emit(SessionsEffect.Message("Занятие удалено")); load() }
+                is Outcome.Failure -> emit(SessionsEffect.Message(r.message))
+            }
+        }
+    }
+}
+
+// --- Заявки на индивидуальные занятия (преподаватель) ---
+data class BookingRequestsState(val loading: Boolean = true, val requests: List<BookingRequestDto> = emptyList(), val error: String? = null)
+sealed interface BookingRequestsIntent {
+    data object Load : BookingRequestsIntent
+    data class Accept(val bookingId: Long) : BookingRequestsIntent
+    data class Decline(val bookingId: Long) : BookingRequestsIntent
+}
+sealed interface BookingRequestsEffect { data class Message(val text: String) : BookingRequestsEffect }
+
+class BookingRequestsStore(private val repo: SessionRepository, scope: CoroutineScope) :
+    MviStore<BookingRequestsState, BookingRequestsIntent, BookingRequestsEffect>(BookingRequestsState(), scope) {
+    override fun onIntent(intent: BookingRequestsIntent) {
+        when (intent) {
+            BookingRequestsIntent.Load -> load()
+            is BookingRequestsIntent.Accept -> act(intent.bookingId, true)
+            is BookingRequestsIntent.Decline -> act(intent.bookingId, false)
+        }
+    }
+    private fun load() {
+        setState { it.copy(loading = true, error = null) }
+        scope.launch {
+            when (val r = repo.requests()) {
+                is Outcome.Success -> setState { it.copy(loading = false, requests = r.data) }
+                is Outcome.Failure -> setState { it.copy(loading = false, error = r.message) }
+            }
+        }
+    }
+    private fun act(bookingId: Long, accept: Boolean) {
+        scope.launch {
+            val r = if (accept) repo.accept(bookingId) else repo.decline(bookingId)
+            when (r) {
+                is Outcome.Success -> { emit(BookingRequestsEffect.Message(if (accept) "Заявка принята ✅" else "Заявка отклонена")); load() }
+                is Outcome.Failure -> emit(BookingRequestsEffect.Message(r.message))
             }
         }
     }
