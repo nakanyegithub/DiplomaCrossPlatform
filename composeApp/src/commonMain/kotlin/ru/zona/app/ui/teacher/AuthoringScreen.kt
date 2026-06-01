@@ -16,11 +16,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import ru.zona.app.core.design.ScreenHeader
 import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
+import ru.zona.app.core.design.ZonaSecondaryButton
 import ru.zona.app.core.design.ZonaTextField
+import ru.zona.app.core.media.Avatar
+import ru.zona.app.core.media.rememberImagePicker
 import ru.zona.app.core.mvi.collectState
 import ru.zona.app.core.util.formatPrice
 import ru.zona.app.feature.learning.presentation.AuthoringEffect
@@ -35,6 +40,7 @@ fun AuthoringScreen(
 ) {
     val state by store.collectState { eff -> when (eff) { is AuthoringEffect.Message -> onMessage(eff.text) } }
     LaunchedEffect(Unit) { store.dispatch(AuthoringIntent.Load) }
+    val pickPhoto = rememberImagePicker { picked -> if (picked != null) store.dispatch(AuthoringIntent.AddPhoto(picked)) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ScreenHeader("Мои курсы", "Создавайте курсы и обучайте учеников")
@@ -50,6 +56,24 @@ fun AuthoringScreen(
                         Column(Modifier.weight(1f)) { ZonaTextField(state.emoji, { store.dispatch(AuthoringIntent.SetEmoji(it)) }, "Эмодзи") }
                     }
                     ZonaTextField(state.priceText, { store.dispatch(AuthoringIntent.SetPrice(it)) }, "Цена в ₵ (пусто = бесплатно)")
+
+                    Text("Фотографии курса (до 5)", style = MaterialTheme.typography.labelMedium)
+                    if (state.gallery.isNotEmpty()) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(state.gallery) { photo ->
+                                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                                    Avatar(base64 = photo, name = "🖼", size = 72.dp)
+                                    androidx.compose.material3.TextButton(onClick = { store.dispatch(AuthoringIntent.RemovePhoto(photo)) }) {
+                                        Text("Убрать", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (state.gallery.size < 5) {
+                        ZonaSecondaryButton("🖼 Добавить фото") { pickPhoto() }
+                    }
+
                     ZonaPrimaryButton(if (state.saving) "Создаём…" else "Создать курс", enabled = !state.saving && state.title.isNotBlank()) {
                         store.dispatch(AuthoringIntent.Create)
                     }

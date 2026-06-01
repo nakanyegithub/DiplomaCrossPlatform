@@ -91,6 +91,7 @@ object Courses : Table("courses") {
     val level = varchar("level", 32).default("A1")
     val priceCents = long("price_cents").nullable() // null = бесплатно
     val coverEmoji = varchar("cover_emoji", 16).default("🚀")
+    val galleryJson = text("gallery_json").nullable() // JSON-массив base64-изображений
     val published = bool("published").default(true)
     val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)

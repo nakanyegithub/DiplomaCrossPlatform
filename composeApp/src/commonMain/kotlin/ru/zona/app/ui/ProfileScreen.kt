@@ -15,6 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +41,7 @@ import ru.zona.app.feature.profile.presentation.ProfileStore
 @Composable
 fun ProfileScreen(
     store: ProfileStore,
+    walletRepository: ru.zona.app.feature.wallet.WalletRepository,
     onUserUpdated: (User) -> Unit,
     onMessage: (String) -> Unit,
     onOpenWallet: () -> Unit,
@@ -51,6 +55,14 @@ fun ProfileScreen(
         }
     }
     LaunchedEffect(Unit) { store.dispatch(ProfileIntent.Refresh) }
+
+    var balanceCents by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(state.user.id, state.user.xp) {
+        when (val r = walletRepository.wallet()) {
+            is ru.zona.app.core.result.Outcome.Success -> balanceCents = r.data.balanceCents
+            is ru.zona.app.core.result.Outcome.Failure -> Unit
+        }
+    }
 
     val pickAvatar = rememberImagePicker { picked ->
         if (picked != null) store.dispatch(ProfileIntent.SetAvatarUrl(picked))
@@ -80,6 +92,9 @@ fun ProfileScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ZonaBadge(roleLabel)
                                 ZonaBadge("⭐ ${user.xp} XP", content = MaterialTheme.colorScheme.secondary)
+                            }
+                            balanceCents?.let { bal ->
+                                ZonaBadge("💰 ${ru.zona.app.core.util.formatBalance(bal)}", content = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }

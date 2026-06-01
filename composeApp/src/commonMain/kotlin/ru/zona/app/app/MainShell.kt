@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -82,6 +83,7 @@ fun MainShell(
     val tabs = remember(user.role) {
         buildList {
             add(TabItem("catalog", "Курсы", Icons.Default.School))
+            add(TabItem("teachers", "Наставники", Icons.Default.Person))
             add(TabItem("cards", "Карты", Icons.Default.Style))
             add(TabItem("sessions", "Занятия", Icons.Default.Event))
             add(TabItem("chat", "Чат", Icons.Default.Chat))
@@ -106,6 +108,17 @@ fun MainShell(
     val authoringStore = remember { AuthoringStore(graph.learningRepository, scope) }
     val createSessionStore = remember { CreateSessionStore(graph.sessionRepository, scope) }
     val adminStore = remember { AdminStore(graph.teacherRepository, scope) }
+    val teachersStore = remember { TeachersStore(graph.teacherRepository, scope) }
+
+    // Открыть (или создать) диалог с пользователем и перейти в чат.
+    val openChatWith: (Long, String) -> Unit = { peerId, peerName ->
+        scope.launch {
+            when (val r = graph.chatRepository.openWith(peerId)) {
+                is ru.zona.app.core.result.Outcome.Success -> nav.push(Destination.Chat(r.data, peerName))
+                is ru.zona.app.core.result.Outcome.Failure -> onMessage(r.message)
+            }
+        }
+    }
 
     val overlay = nav.current
 
@@ -145,6 +158,7 @@ fun MainShell(
             } else {
                 when (tabId) {
                     "catalog" -> CatalogScreen(catalogStore) { c -> nav.push(Destination.CourseDetail(c.id, c.title)) }
+                    "teachers" -> TeachersScreen(teachersStore, onOpenChat = openChatWith, onMessage = onMessage)
                     "cards" -> DecksScreen(
                         store = decksStore,
                         canCreate = canCreate,
@@ -159,6 +173,7 @@ fun MainShell(
                     "profile" ->
                         ProfileScreen(
                             store = profileStore,
+                            walletRepository = graph.walletRepository,
                             onUserUpdated = onUserUpdated,
                             onMessage = onMessage,
                             onOpenWallet = { nav.push(Destination.Wallet) },
@@ -204,7 +219,7 @@ private fun Overlay(
         }
         Destination.Teachers -> {
             val store = remember { TeachersStore(graph.teacherRepository, scope) }
-            TeachersScreen(store, onOpenChat = { _, _ -> onMessage("Откройте чат из списка преподавателей") }, onMessage = onMessage)
+            TeachersScreen(store, onOpenChat = { _, _ -> }, onMessage = onMessage)
         }
         Destination.Application -> {
             val store = remember { ApplicationStore(graph.teacherRepository, scope) }

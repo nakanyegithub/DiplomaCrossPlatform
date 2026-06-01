@@ -157,6 +157,7 @@ class LearningService(
                     it[level] = req.level
                     it[priceCents] = req.priceCents?.takeIf { p -> p > 0 }
                     it[coverEmoji] = req.coverEmoji.ifBlank { "🚀" }
+                    it[galleryJson] = if (req.gallery.isEmpty()) null else json.encodeToString(ListSerializer(String.serializer()), req.gallery)
                     it[published] = true
                     it[createdAt] = System.currentTimeMillis()
                 }[Courses.id]
@@ -267,6 +268,7 @@ class LearningService(
             level = row[Courses.level],
             priceCents = row[Courses.priceCents],
             coverEmoji = row[Courses.coverEmoji],
+            gallery = row[Courses.galleryJson]?.let { g -> runCatching { json.decodeFromString(ListSerializer(String.serializer()), g) }.getOrDefault(emptyList()) } ?: emptyList(),
             lessonCount = lessonIds.size,
             enrolled = enrolled,
             progressPercent = progress,

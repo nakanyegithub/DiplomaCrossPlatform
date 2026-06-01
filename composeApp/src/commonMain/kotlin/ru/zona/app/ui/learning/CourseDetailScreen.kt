@@ -69,6 +69,13 @@ fun CourseDetailScreen(
                                 Text(course.coverEmoji, style = MaterialTheme.typography.displayMedium)
                                 Text(course.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                                 Text(course.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (course.gallery.isNotEmpty()) {
+                                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        items(course.gallery) { photo ->
+                                            ru.zona.app.core.media.Avatar(base64 = photo, name = "🖼", size = 96.dp)
+                                        }
+                                    }
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     ZonaBadge("${course.languageTo} · ${course.level}")
                                     ZonaBadge(formatPrice(course.priceCents))

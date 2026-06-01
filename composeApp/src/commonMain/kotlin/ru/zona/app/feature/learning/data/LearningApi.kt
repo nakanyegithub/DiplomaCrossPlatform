@@ -20,6 +20,7 @@ data class CourseDto(
     val level: String,
     val priceCents: Long? = null,
     val coverEmoji: String = "🚀",
+    val gallery: List<String> = emptyList(),
     val lessonCount: Int = 0,
     val enrolled: Boolean = false,
     val progressPercent: Int = 0,
@@ -64,6 +65,7 @@ data class CreateCourseRequest(
     val level: String = "A1",
     val priceCents: Long? = null,
     val coverEmoji: String = "🚀",
+    val gallery: List<String> = emptyList(),
 )
 
 @Serializable

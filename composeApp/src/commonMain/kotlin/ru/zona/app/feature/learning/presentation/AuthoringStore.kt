@@ -15,6 +15,7 @@ data class AuthoringState(
     val level: String = "A1",
     val priceText: String = "",
     val emoji: String = "🚀",
+    val gallery: List<String> = emptyList(),
     val saving: Boolean = false,
     val myCourses: List<CourseDto> = emptyList(),
 )
@@ -27,6 +28,8 @@ sealed interface AuthoringIntent {
     data class SetLevel(val v: String) : AuthoringIntent
     data class SetPrice(val v: String) : AuthoringIntent
     data class SetEmoji(val v: String) : AuthoringIntent
+    data class AddPhoto(val base64: String) : AuthoringIntent
+    data class RemovePhoto(val base64: String) : AuthoringIntent
     data object Create : AuthoringIntent
 }
 
@@ -48,6 +51,8 @@ class AuthoringStore(
             is AuthoringIntent.SetLevel -> setState { it.copy(level = intent.v) }
             is AuthoringIntent.SetPrice -> setState { it.copy(priceText = intent.v.filter { c -> c.isDigit() }) }
             is AuthoringIntent.SetEmoji -> setState { it.copy(emoji = intent.v.take(2).ifBlank { "🚀" }) }
+            is AuthoringIntent.AddPhoto -> setState { if (it.gallery.size >= 5) it else it.copy(gallery = it.gallery + intent.base64) }
+            is AuthoringIntent.RemovePhoto -> setState { it.copy(gallery = it.gallery - intent.base64) }
             AuthoringIntent.Create -> create()
         }
     }
@@ -75,6 +80,7 @@ class AuthoringStore(
                     level = st.level,
                     priceCents = priceCents,
                     coverEmoji = st.emoji,
+                    gallery = st.gallery,
                 )
             when (val r = repo.createCourse(req)) {
                 is Outcome.Success -> {
