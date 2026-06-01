@@ -72,7 +72,7 @@ fun CourseDetailScreen(
                                 if (course.gallery.isNotEmpty()) {
                                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         items(course.gallery) { photo ->
-                                            ru.zona.app.core.media.Avatar(base64 = photo, name = "🖼", size = 96.dp)
+                                            ru.zona.app.core.media.CourseImage(base64 = photo, width = 200.dp, height = 130.dp)
                                         }
                                     }
                                 }

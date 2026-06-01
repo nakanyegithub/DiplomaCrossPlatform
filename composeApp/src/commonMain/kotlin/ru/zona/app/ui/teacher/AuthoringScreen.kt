@@ -24,7 +24,7 @@ import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaSecondaryButton
 import ru.zona.app.core.design.ZonaTextField
-import ru.zona.app.core.media.Avatar
+import ru.zona.app.core.media.CourseImage
 import ru.zona.app.core.media.rememberImagePicker
 import ru.zona.app.core.mvi.collectState
 import ru.zona.app.core.util.formatPrice
@@ -62,7 +62,7 @@ fun AuthoringScreen(
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(state.gallery) { photo ->
                                 Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
-                                    Avatar(base64 = photo, name = "🖼", size = 72.dp)
+                                    CourseImage(base64 = photo, width = 120.dp, height = 84.dp)
                                     androidx.compose.material3.TextButton(onClick = { store.dispatch(AuthoringIntent.RemovePhoto(photo)) }) {
                                         Text("Убрать", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                                     }
