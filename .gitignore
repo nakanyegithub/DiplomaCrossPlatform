@@ -11,3 +11,4 @@
 /server/build/classes/kotlin/main/
 # Claude Code служебные файлы
 .claude/
+.kotlin/
