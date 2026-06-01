@@ -37,6 +37,8 @@ sealed interface CourseEditorIntent {
     data class ToggleCorrectIndex(val i: Int) : CourseEditorIntent
     data class SetCorrectText(val v: String) : CourseEditorIntent
     data object AddExercise : CourseEditorIntent
+    data class DeleteLesson(val lessonId: Long) : CourseEditorIntent
+    data class DeleteExercise(val exerciseId: Long) : CourseEditorIntent
 }
 
 sealed interface CourseEditorEffect { data class Message(val text: String) : CourseEditorEffect }
@@ -68,6 +70,18 @@ class CourseEditorStore(
             }
             is CourseEditorIntent.SetCorrectText -> setState { it.copy(correctText = intent.v) }
             CourseEditorIntent.AddExercise -> addExercise()
+            is CourseEditorIntent.DeleteLesson -> scope.launch {
+                when (val r = repo.deleteLesson(intent.lessonId)) {
+                    is Outcome.Success -> { emit(CourseEditorEffect.Message("Урок удалён")); load() }
+                    is Outcome.Failure -> emit(CourseEditorEffect.Message(r.message))
+                }
+            }
+            is CourseEditorIntent.DeleteExercise -> scope.launch {
+                when (val r = repo.deleteExercise(intent.exerciseId)) {
+                    is Outcome.Success -> { emit(CourseEditorEffect.Message("Упражнение удалено")); load() }
+                    is Outcome.Failure -> emit(CourseEditorEffect.Message(r.message))
+                }
+            }
         }
     }
 

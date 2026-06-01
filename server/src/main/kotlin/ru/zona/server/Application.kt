@@ -51,8 +51,8 @@ fun Application.module(config: ServerConfig) {
     val walletService = WalletService()
     val learningService = LearningService(walletService)
     val flashcardService = FlashcardService()
-    val sessionService = SessionService(walletService)
     val chatService = ChatService()
+    val sessionService = SessionService(walletService, chatService)
     val teacherService = TeacherService()
 
     ZonaSeed.seedIfEmpty(authDao, learningService, flashcardService, sessionService, walletService)

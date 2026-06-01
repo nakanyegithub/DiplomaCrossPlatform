@@ -83,6 +83,9 @@ fun CourseEditorScreen(
                                 Text("${lesson.exerciseCount} упражнений", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (selected) ZonaBadge("выбран")
+                            androidx.compose.material3.TextButton(onClick = { store.dispatch(CourseEditorIntent.DeleteLesson(lesson.id)) }) {
+                                Text("🗑", style = MaterialTheme.typography.titleMedium)
+                            }
                         }
                     }
                 }

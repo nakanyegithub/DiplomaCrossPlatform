@@ -24,6 +24,7 @@ object Tables {
                 Sessions,
                 SessionBookings,
                 Conversations,
+                ConversationParticipants,
                 Messages,
             )
 }
@@ -199,11 +200,20 @@ object SessionBookings : Table("session_bookings") {
 
 object Conversations : Table("conversations") {
     val id = long("id").autoIncrement()
-    val userA = long("user_a").references(Users.id) // min(id)
-    val userB = long("user_b").references(Users.id) // max(id)
+    val userA = long("user_a").references(Users.id).nullable() // 1-на-1: min(id)
+    val userB = long("user_b").references(Users.id).nullable() // 1-на-1: max(id)
+    val isGroup = bool("is_group").default(false)
+    val title = varchar("title", 255).default("")
+    val sessionId = long("session_id").references(Sessions.id).nullable()
     val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)
-    init { uniqueIndex(userA, userB) }
+}
+
+/** Участники группового разговора (для занятий). */
+object ConversationParticipants : Table("conversation_participants") {
+    val conversationId = long("conversation_id").references(Conversations.id)
+    val userId = long("user_id").references(Users.id)
+    override val primaryKey = PrimaryKey(conversationId, userId)
 }
 
 object Messages : Table("messages") {
@@ -213,5 +223,6 @@ object Messages : Table("messages") {
     val text = text("text")
     val sentAt = long("sent_at")
     val readAt = long("read_at").nullable()
+    val replyToId = long("reply_to_id").nullable()
     override val primaryKey = PrimaryKey(id)
 }

@@ -87,10 +87,6 @@ fun MainShell(
             add(TabItem("cards", "Карты", Icons.Default.Style))
             add(TabItem("sessions", "Занятия", Icons.Default.Event))
             add(TabItem("chat", "Чат", Icons.Default.Chat))
-            if (user.role == UserRole.TEACHER) {
-                add(TabItem("teach", "Создать", Icons.Outlined.Add))
-                add(TabItem("host", "Урок", Icons.Default.Event))
-            }
             if (user.role == UserRole.ADMIN) add(TabItem("admin", "Заявки", Icons.Default.AdminPanelSettings))
             add(TabItem("profile", "Профиль", Icons.Default.Person))
         }
@@ -105,8 +101,6 @@ fun MainShell(
     val sessionsStore = remember { SessionsStore(graph.sessionRepository, scope) }
     val chatListStore = remember { ChatListStore(graph.chatRepository, scope) }
     val profileStore = remember(user.id) { ProfileStore(user, graph.profileRepository, scope) }
-    val authoringStore = remember { AuthoringStore(graph.learningRepository, scope) }
-    val createSessionStore = remember { CreateSessionStore(graph.sessionRepository, scope) }
     val adminStore = remember { AdminStore(graph.teacherRepository, scope) }
 
     // Открыть (или создать) диалог с пользователем и перейти в чат.
@@ -156,17 +150,25 @@ fun MainShell(
                 Overlay(graph, user, nav, overlay, openChatWith, onMessage)
             } else {
                 when (tabId) {
-                    "catalog" -> CatalogScreen(catalogStore) { c -> nav.push(Destination.CourseDetail(c.id, c.title)) }
+                    "catalog" -> CatalogScreen(
+                        store = catalogStore,
+                        canCreate = canCreate,
+                        onOpenCourse = { c -> nav.push(Destination.CourseDetail(c.id, c.title)) },
+                        onManageCourses = { nav.push(Destination.Authoring) },
+                    )
                     "cards" -> DecksScreen(
                         store = decksStore,
                         canCreate = canCreate,
                         onOpenDeck = { d -> nav.push(Destination.Deck(d.id, d.title)) },
                         onManageDeck = { d -> nav.push(Destination.ManageDeck(d.id, d.title)) },
                     )
-                    "sessions" -> SessionsScreen(sessionsStore, onMessage)
-                    "chat" -> ChatListScreen(chatListStore) { c -> nav.push(Destination.Chat(c.id, c.peerName)) }
-                    "teach" -> AuthoringScreen(authoringStore, onEditCourse = { id, title -> nav.push(Destination.CourseEditor(id, title)) }, onMessage = onMessage)
-                    "host" -> CreateSessionScreen(createSessionStore, onMessage)
+                    "sessions" -> SessionsScreen(
+                        store = sessionsStore,
+                        canCreate = canCreate,
+                        onCreate = { nav.push(Destination.CreateSession) },
+                        onMessage = onMessage,
+                    )
+                    "chat" -> ChatListScreen(chatListStore) { c -> nav.push(Destination.Chat(c.id, c.peerName, c.isGroup)) }
                     "admin" -> AdminScreen(adminStore, onMessage)
                     "profile" ->
                         ProfileScreen(
@@ -226,7 +228,7 @@ private fun Overlay(
         }
         is Destination.Chat -> {
             val store = remember(dest.conversationId) { ChatStore(dest.conversationId, graph.chatRepository, scope) }
-            ChatScreen(dest.peerName, user.id, store, onBack = { nav.pop() }, onMessage = onMessage)
+            ChatScreen(dest.peerName, user.id, store, onBack = { nav.pop() }, onMessage = onMessage, isGroup = dest.isGroup)
         }
         Destination.Teachers -> {
             val store = remember { TeachersStore(graph.teacherRepository, scope) }
@@ -248,6 +250,18 @@ private fun Overlay(
             val store = remember(dest.deckId) { ManageDeckStore(dest.deckId, graph.flashcardRepository, scope) }
             ManageDeckScreen(dest.title, store, onBack = { nav.pop() }, onMessage = onMessage)
         }
-        Destination.Authoring -> Unit
+        Destination.Authoring -> {
+            val store = remember { AuthoringStore(graph.learningRepository, scope) }
+            AuthoringScreen(
+                store = store,
+                onEditCourse = { id, title -> nav.push(Destination.CourseEditor(id, title)) },
+                onBack = { nav.pop() },
+                onMessage = onMessage,
+            )
+        }
+        Destination.CreateSession -> {
+            val store = remember { CreateSessionStore(graph.sessionRepository, scope) }
+            CreateSessionScreen(store = store, onBack = { nav.pop() }, onMessage = onMessage)
+        }
     }
 }

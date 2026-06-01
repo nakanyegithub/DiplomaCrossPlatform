@@ -30,6 +30,7 @@ sealed interface AuthoringIntent {
     data class SetEmoji(val v: String) : AuthoringIntent
     data class AddPhoto(val base64: String) : AuthoringIntent
     data class RemovePhoto(val base64: String) : AuthoringIntent
+    data class DeleteCourse(val courseId: Long) : AuthoringIntent
     data object Create : AuthoringIntent
 }
 
@@ -53,6 +54,7 @@ class AuthoringStore(
             is AuthoringIntent.SetEmoji -> setState { it.copy(emoji = intent.v.take(2).ifBlank { "🚀" }) }
             is AuthoringIntent.AddPhoto -> setState { if (it.gallery.size >= 5) it else it.copy(gallery = it.gallery + intent.base64) }
             is AuthoringIntent.RemovePhoto -> setState { it.copy(gallery = it.gallery - intent.base64) }
+            is AuthoringIntent.DeleteCourse -> deleteCourse(intent.courseId)
             AuthoringIntent.Create -> create()
         }
     }
@@ -61,6 +63,15 @@ class AuthoringStore(
         scope.launch {
             when (val r = repo.teachingCourses()) {
                 is Outcome.Success -> setState { it.copy(myCourses = r.data) }
+                is Outcome.Failure -> emit(AuthoringEffect.Message(r.message))
+            }
+        }
+    }
+
+    private fun deleteCourse(courseId: Long) {
+        scope.launch {
+            when (val r = repo.deleteCourse(courseId)) {
+                is Outcome.Success -> { emit(AuthoringEffect.Message("Курс удалён")); load() }
                 is Outcome.Failure -> emit(AuthoringEffect.Message(r.message))
             }
         }

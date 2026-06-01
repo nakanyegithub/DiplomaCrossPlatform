@@ -49,7 +49,10 @@ data class CreateSessionRequest(
     val priceCents: Long? = null,
 )
 
-class SessionService(private val wallet: WalletService) {
+class SessionService(
+    private val wallet: WalletService,
+    private val chat: ru.zona.server.feature.chat.ChatService,
+) {
     fun upcoming(userId: Long): List<SessionDto> =
         transaction {
             val now = System.currentTimeMillis()
@@ -90,6 +93,8 @@ class SessionService(private val wallet: WalletService) {
                     it[createdAt] = System.currentTimeMillis()
                 }[Sessions.id]
             }
+        // Для групповых занятий — сразу создаём групповой чат с преподавателем.
+        if (req.type == "GROUP") chat.ensureGroupForSession(id, teacherId, req.title.trim())
         return transaction { dto(id, teacherId)!! }
     }
 
@@ -119,6 +124,12 @@ class SessionService(private val wallet: WalletService) {
                 it[paidCents] = price
                 it[createdAt] = System.currentTimeMillis()
             }
+        }
+        // Группа: добавляем ученика в групповой чат занятия.
+        val sess = transaction { Sessions.selectAll().where { Sessions.id eq sessionId }.first() }
+        if (sess[Sessions.type] == "GROUP") {
+            val convId = chat.ensureGroupForSession(sessionId, sess[Sessions.teacherId], sess[Sessions.title])
+            chat.addParticipant(convId, userId)
         }
         return transaction { dto(sessionId, userId)!! }
     }

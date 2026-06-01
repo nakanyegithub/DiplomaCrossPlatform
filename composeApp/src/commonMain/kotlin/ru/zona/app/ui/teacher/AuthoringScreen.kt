@@ -36,6 +36,7 @@ import ru.zona.app.feature.learning.presentation.AuthoringStore
 fun AuthoringScreen(
     store: AuthoringStore,
     onEditCourse: (Long, String) -> Unit,
+    onBack: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff -> when (eff) { is AuthoringEffect.Message -> onMessage(eff.text) } }
@@ -43,7 +44,7 @@ fun AuthoringScreen(
     val pickPhoto = rememberImagePicker { picked -> if (picked != null) store.dispatch(AuthoringIntent.AddPhoto(picked)) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        ScreenHeader("Мои курсы", "Создавайте курсы и обучайте учеников")
+        ru.zona.app.ui.common.ZonaTopBar("Мои курсы", onBack = onBack)
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ZonaCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -93,6 +94,7 @@ fun AuthoringScreen(
                                 ZonaBadge(formatPrice(c.priceCents))
                             }
                             ZonaPrimaryButton("📚 Программа курса (уроки и задания)") { onEditCourse(c.id, c.title) }
+                            ru.zona.app.core.design.ZonaSecondaryButton("🗑 Удалить курс") { store.dispatch(AuthoringIntent.DeleteCourse(c.id)) }
                         }
                     }
                 }

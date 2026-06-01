@@ -36,13 +36,20 @@ import ru.zona.app.feature.learning.presentation.CatalogTab
 @Composable
 fun CatalogScreen(
     store: CatalogStore,
+    canCreate: Boolean,
     onOpenCourse: (CourseDto) -> Unit,
+    onManageCourses: () -> Unit,
 ) {
     val state by store.collectState()
     LaunchedEffect(Unit) { store.dispatch(CatalogIntent.Load) }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Каталог курсов", "Выбери курс и отправляйся в путешествие")
+        if (canCreate) {
+            Row(Modifier.padding(horizontal = 20.dp)) {
+                ru.zona.app.core.design.ZonaPrimaryButton("➕ Создать / мои курсы", onClick = onManageCourses)
+            }
+        }
         TabRow(selectedTabIndex = if (state.tab == CatalogTab.All) 0 else 1, containerColor = MaterialTheme.colorScheme.background) {
             Tab(selected = state.tab == CatalogTab.All, onClick = { store.dispatch(CatalogIntent.SetTab(CatalogTab.All)) }, text = { Text("Все курсы") })
             Tab(selected = state.tab == CatalogTab.Mine, onClick = { store.dispatch(CatalogIntent.SetTab(CatalogTab.Mine)) }, text = { Text("Мои курсы") })

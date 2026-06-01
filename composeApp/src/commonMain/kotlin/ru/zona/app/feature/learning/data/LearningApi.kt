@@ -1,6 +1,7 @@
 package ru.zona.app.feature.learning.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -105,4 +106,8 @@ class LearningApi(private val client: HttpClient, private val baseUrl: String) {
 
     suspend fun addExercise(lessonId: Long, body: CreateExerciseRequest): HttpResponse =
         client.post("$baseUrl/api/lessons/$lessonId/exercises") { setBody(body) }
+
+    suspend fun deleteCourse(courseId: Long): HttpResponse = client.delete("$baseUrl/api/courses/$courseId")
+    suspend fun deleteLesson(lessonId: Long): HttpResponse = client.delete("$baseUrl/api/lessons/$lessonId")
+    suspend fun deleteExercise(exerciseId: Long): HttpResponse = client.delete("$baseUrl/api/exercises/$exerciseId")
 }

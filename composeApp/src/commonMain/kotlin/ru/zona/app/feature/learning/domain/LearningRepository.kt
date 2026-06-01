@@ -21,4 +21,7 @@ interface LearningRepository {
     suspend fun createCourse(req: CreateCourseRequest): Outcome<CourseDto>
     suspend fun addLesson(courseId: Long, title: String): Outcome<LessonDto>
     suspend fun addExercise(lessonId: Long, req: CreateExerciseRequest): Outcome<ExerciseDto>
+    suspend fun deleteCourse(courseId: Long): Outcome<Unit>
+    suspend fun deleteLesson(lessonId: Long): Outcome<Unit>
+    suspend fun deleteExercise(exerciseId: Long): Outcome<Unit>
 }

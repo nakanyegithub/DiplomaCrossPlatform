@@ -7,7 +7,7 @@ sealed interface Destination {
     data class CourseDetail(val courseId: Long, val title: String) : Destination
     data class Lesson(val lessonId: Long, val title: String) : Destination
     data class Deck(val deckId: Long, val title: String) : Destination
-    data class Chat(val conversationId: Long, val peerName: String) : Destination
+    data class Chat(val conversationId: Long, val peerName: String, val isGroup: Boolean = false) : Destination
     data class CourseEditor(val courseId: Long, val title: String) : Destination
     data class ManageDeck(val deckId: Long, val title: String) : Destination
     data class TeacherProfile(val teacherId: Long, val name: String) : Destination
@@ -15,6 +15,7 @@ sealed interface Destination {
     data object Application : Destination
     data object Wallet : Destination
     data object Authoring : Destination
+    data object CreateSession : Destination
 }
 
 /** Простой стек навигации без сторонних библиотек — работает на всех платформах. */

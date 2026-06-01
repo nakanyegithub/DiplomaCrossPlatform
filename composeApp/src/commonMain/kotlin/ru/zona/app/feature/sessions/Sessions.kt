@@ -152,7 +152,7 @@ class CreateSessionStore(private val repo: SessionRepository, scope: CoroutineSc
             is CreateSessionIntent.SetDate -> setState { it.copy(dateMillis = intent.millis) }
             is CreateSessionIntent.SetHour -> setState { it.copy(hour = intent.v.coerceIn(0, 23)) }
             is CreateSessionIntent.SetMinute -> setState { it.copy(minute = ((intent.v % 60) + 60) % 60) }
-            is CreateSessionIntent.SetDuration -> setState { it.copy(durationMinutes = intent.v.coerceIn(15, 240)) }
+            is CreateSessionIntent.SetDuration -> setState { it.copy(durationMinutes = intent.v.coerceIn(5, 600)) }
             is CreateSessionIntent.SetCapacity -> setState { it.copy(capacity = intent.v.coerceIn(1, 100)) }
             is CreateSessionIntent.SetPrice -> setState { it.copy(priceText = intent.v.filter { c -> c.isDigit() }) }
             CreateSessionIntent.Create -> create()

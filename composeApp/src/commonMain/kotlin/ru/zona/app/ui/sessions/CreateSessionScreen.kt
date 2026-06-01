@@ -39,6 +39,7 @@ import ru.zona.app.feature.sessions.CreateSessionStore
 @Composable
 fun CreateSessionScreen(
     store: CreateSessionStore,
+    onBack: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff -> when (eff) { is CreateSessionEffect.Message -> onMessage(eff.text) } }
@@ -62,7 +63,7 @@ fun CreateSessionScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Провести занятие", "Создайте групповой или индивидуальный урок")
+        ru.zona.app.ui.common.ZonaTopBar("Провести занятие", onBack = onBack)
         LazyColumn(
             Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -82,14 +83,22 @@ fun CreateSessionScreen(
                         ZonaTextField(state.title, { store.dispatch(CreateSessionIntent.SetTitle(it)) }, "Название занятия")
                         ZonaTextField(state.description, { store.dispatch(CreateSessionIntent.SetDescription(it)) }, "Описание", singleLine = false, minLines = 2)
 
-                        Text("Дата: ${ru.zona.app.core.util.formatDate(state.dateMillis)}", style = MaterialTheme.typography.bodyMedium)
-                        ZonaSecondaryButton("📅 Выбрать дату") { showDatePicker = true }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(Modifier.weight(1f)) { Stepper("Час", state.hour, { store.dispatch(CreateSessionIntent.SetHour(it)) }) }
-                            Box(Modifier.weight(1f)) { Stepper("Мин", state.minute, { store.dispatch(CreateSessionIntent.SetMinute(it)) }, step = 5) }
-                        }
-                        Stepper("Длительность (мин)", state.durationMinutes, { store.dispatch(CreateSessionIntent.SetDuration(it)) }, step = 15)
+                        Text("📅 Дата: ${ru.zona.app.core.util.formatDate(state.dateMillis)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        ZonaSecondaryButton("Выбрать дату") { showDatePicker = true }
+
+                        Text("Время начала", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Stepper("Часы", state.hour, { store.dispatch(CreateSessionIntent.SetHour(it)) })
+                        Stepper("Минуты", state.minute, { store.dispatch(CreateSessionIntent.SetMinute(it)) }, step = 5)
+
+                        Text("Длительность занятия", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val durH = state.durationMinutes / 60
+                        val durM = state.durationMinutes % 60
+                        Stepper("Часы", durH, { newH -> store.dispatch(CreateSessionIntent.SetDuration(newH.coerceAtLeast(0) * 60 + durM)) })
+                        Stepper("Минуты", durM, { newM -> store.dispatch(CreateSessionIntent.SetDuration(durH * 60 + ((newM % 60) + 60) % 60)) }, step = 5)
+                        Text("Итого: $durH ч $durM мин", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+
                         if (state.type == "GROUP") {
+                            Text("Количество мест", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Stepper("Мест", state.capacity, { store.dispatch(CreateSessionIntent.SetCapacity(it)) })
                         }
                         ZonaTextField(state.priceText, { store.dispatch(CreateSessionIntent.SetPrice(it)) }, "Цена в ₵ (пусто = бесплатно)")

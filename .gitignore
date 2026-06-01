@@ -9,3 +9,5 @@
 /composeApp/build/classes/kotlin/desktop/main/
 /server/build/
 /server/build/classes/kotlin/main/
+# Claude Code служебные файлы
+.claude/

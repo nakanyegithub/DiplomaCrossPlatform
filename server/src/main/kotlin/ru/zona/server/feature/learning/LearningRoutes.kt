@@ -5,6 +5,7 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import ru.zona.server.plugins.ApiException
@@ -51,6 +52,18 @@ fun Route.learningRoutes(service: LearningService) {
         post("/api/lessons/{id}/exercises") {
             val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
             call.respond(service.addExercise(requireUserId(), id, call.receive<CreateExerciseRequest>()))
+        }
+        delete("/api/courses/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
+            service.deleteCourse(requireUserId(), id); call.respond(io.ktor.http.HttpStatusCode.NoContent)
+        }
+        delete("/api/lessons/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
+            service.deleteLesson(requireUserId(), id); call.respond(io.ktor.http.HttpStatusCode.NoContent)
+        }
+        delete("/api/exercises/{id}") {
+            val id = call.parameters["id"]?.toLongOrNull() ?: throw ApiException(HttpStatusCode.BadRequest, "id")
+            service.deleteExercise(requireUserId(), id); call.respond(io.ktor.http.HttpStatusCode.NoContent)
         }
     }
 }

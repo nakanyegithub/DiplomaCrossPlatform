@@ -5,7 +5,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -206,6 +208,47 @@ class LearningService(
                 }[Exercises.id]
             ExerciseDto(id, lessonId, req.type, req.prompt.trim(), req.choices, req.xp, order)
         }
+
+    // --- удаление (только владелец) ---
+    fun deleteCourse(teacherId: Long, courseId: Long) {
+        transaction {
+            requireCourseOwner(courseId, teacherId)
+            val lessonIds = Lessons.selectAll().where { Lessons.courseId eq courseId }.map { it[Lessons.id] }
+            lessonIds.forEach { lid ->
+                val exIds = Exercises.selectAll().where { Exercises.lessonId eq lid }.map { it[Exercises.id] }
+                exIds.forEach { eid -> ExerciseAttempts.deleteWhere { ExerciseAttempts.exerciseId eq eid } }
+                Exercises.deleteWhere { Exercises.lessonId eq lid }
+                LessonProgress.deleteWhere { LessonProgress.lessonId eq lid }
+            }
+            Lessons.deleteWhere { Lessons.courseId eq courseId }
+            Enrollments.deleteWhere { Enrollments.courseId eq courseId }
+            Courses.deleteWhere { Courses.id eq courseId }
+        }
+    }
+
+    fun deleteLesson(teacherId: Long, lessonId: Long) {
+        transaction {
+            val courseId = Lessons.selectAll().where { Lessons.id eq lessonId }.firstOrNull()?.get(Lessons.courseId)
+                ?: throw ApiException(HttpStatusCode.NotFound, "Урок не найден")
+            requireCourseOwner(courseId, teacherId)
+            val exIds = Exercises.selectAll().where { Exercises.lessonId eq lessonId }.map { it[Exercises.id] }
+            exIds.forEach { eid -> ExerciseAttempts.deleteWhere { ExerciseAttempts.exerciseId eq eid } }
+            Exercises.deleteWhere { Exercises.lessonId eq lessonId }
+            LessonProgress.deleteWhere { LessonProgress.lessonId eq lessonId }
+            Lessons.deleteWhere { Lessons.id eq lessonId }
+        }
+    }
+
+    fun deleteExercise(teacherId: Long, exerciseId: Long) {
+        transaction {
+            val lessonId = Exercises.selectAll().where { Exercises.id eq exerciseId }.firstOrNull()?.get(Exercises.lessonId)
+                ?: throw ApiException(HttpStatusCode.NotFound, "Упражнение не найдено")
+            val courseId = Lessons.selectAll().where { Lessons.id eq lessonId }.first()[Lessons.courseId]
+            requireCourseOwner(courseId, teacherId)
+            ExerciseAttempts.deleteWhere { ExerciseAttempts.exerciseId eq exerciseId }
+            Exercises.deleteWhere { Exercises.id eq exerciseId }
+        }
+    }
 
     // --- helpers ---
     private fun maybeCompleteLesson(lessonId: Long, userId: Long) {

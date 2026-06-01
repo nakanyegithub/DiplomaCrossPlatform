@@ -37,6 +37,8 @@ import ru.zona.app.feature.sessions.SessionsTab
 @Composable
 fun SessionsScreen(
     store: SessionsStore,
+    canCreate: Boolean,
+    onCreate: () -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff -> when (eff) { is SessionsEffect.Message -> onMessage(eff.text) } }
@@ -44,6 +46,11 @@ fun SessionsScreen(
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Занятия", "Групповые и индивидуальные уроки в прямом эфире")
+        if (canCreate) {
+            Row(Modifier.padding(horizontal = 20.dp)) {
+                ZonaPrimaryButton("➕ Провести занятие", onClick = onCreate)
+            }
+        }
         TabRow(selectedTabIndex = if (state.tab == SessionsTab.Upcoming) 0 else 1, containerColor = MaterialTheme.colorScheme.background) {
             Tab(selected = state.tab == SessionsTab.Upcoming, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Upcoming)) }, text = { Text("Ближайшие") })
             Tab(selected = state.tab == SessionsTab.Mine, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Mine)) }, text = { Text("Мои записи") })

@@ -35,4 +35,13 @@ class LearningRepositoryImpl(private val api: LearningApi) : LearningRepository 
 
     override suspend fun addExercise(lessonId: Long, req: CreateExerciseRequest): Outcome<ExerciseDto> =
         safeApiCall({ api.addExercise(lessonId, req) }, { it.body() })
+
+    override suspend fun deleteCourse(courseId: Long): Outcome<Unit> =
+        safeApiCall({ api.deleteCourse(courseId) }, { })
+
+    override suspend fun deleteLesson(lessonId: Long): Outcome<Unit> =
+        safeApiCall({ api.deleteLesson(lessonId) }, { })
+
+    override suspend fun deleteExercise(exerciseId: Long): Outcome<Unit> =
+        safeApiCall({ api.deleteExercise(exerciseId) }, { })
 }
