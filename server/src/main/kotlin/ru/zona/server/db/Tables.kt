@@ -2,9 +2,20 @@ package ru.zona.server.db
 
 import org.jetbrains.exposed.sql.Table
 
-/**
- * Реестр таблиц. Фаза 0 — пусто; таблицы добавляются вместе с фичами (auth, courses, ...).
- */
+/** Реестр таблиц. Растёт вместе с фичами. */
 object Tables {
-    val all: Array<Table> = arrayOf()
+    val all: Array<Table> get() = arrayOf(Users)
+}
+
+object Users : Table("users") {
+    val id = long("id").autoIncrement()
+    val email = varchar("email", 255).uniqueIndex()
+    val passwordHash = varchar("password_hash", 255)
+    val displayName = varchar("display_name", 255)
+    val role = varchar("role", 32) // STUDENT | TEACHER | ADMIN
+    val bio = text("bio").default("")
+    val avatarUrl = varchar("avatar_url", 2048).nullable()
+    val createdAt = long("created_at")
+
+    override val primaryKey = PrimaryKey(id)
 }

@@ -14,10 +14,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -71,6 +74,28 @@ fun ZonaSecondaryButton(
     ) {
         Text(text, style = MaterialTheme.typography.titleSmall)
     }
+}
+
+@Composable
+fun ZonaTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    isPassword: Boolean = false,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = singleLine,
+        minLines = minLines,
+        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+    )
 }
 
 @Composable

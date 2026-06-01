@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 
@@ -24,7 +25,7 @@ fun ZonaTheme(
     MaterialTheme(
         colorScheme = if (darkTheme) ZonaDarkColors else ZonaLightColors,
         shapes = ZonaShapes,
-        typography = MaterialTheme.typography,
+        typography = Typography(),
         content = content,
     )
 }
