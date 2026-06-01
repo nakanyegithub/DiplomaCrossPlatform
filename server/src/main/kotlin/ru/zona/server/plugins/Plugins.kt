@@ -41,6 +41,9 @@ fun Application.configurePlugins() {
         exception<ApiException> { call, cause ->
             call.respond(cause.status, ApiErrorBody(cause.message, cause.status.value))
         }
+        exception<io.ktor.server.plugins.BadRequestException> { call, _ ->
+            call.respond(HttpStatusCode.BadRequest, ApiErrorBody("Некорректный запрос", 400))
+        }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled error", cause)
             call.respond(

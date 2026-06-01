@@ -15,6 +15,7 @@ data class UserRecord(
     val role: String,
     val bio: String,
     val avatarUrl: String?,
+    val xp: Long,
 )
 
 /** Доступ к таблице пользователей. Транзакции узкие — только вокруг запросов. */
@@ -86,5 +87,6 @@ class AuthDao {
             role = this[Users.role],
             bio = this[Users.bio],
             avatarUrl = this[Users.avatarUrl],
+            xp = this[Users.xp],
         )
 }

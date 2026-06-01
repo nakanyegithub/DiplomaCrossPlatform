@@ -18,6 +18,7 @@ data class UserDto(
     val role: String,
     val bio: String = "",
     val avatarUrl: String? = null,
+    val xp: Long = 0,
 )
 
 @Serializable
@@ -31,4 +32,5 @@ fun UserDto.toDomain(): User =
         role = UserRole.from(role),
         bio = bio,
         avatarUrl = avatarUrl,
+        xp = xp,
     )

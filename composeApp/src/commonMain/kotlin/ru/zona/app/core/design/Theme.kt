@@ -1,6 +1,5 @@
 package ru.zona.app.core.design
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -17,13 +16,13 @@ private val ZonaShapes =
         extraLarge = RoundedCornerShape(32.dp),
     )
 
+/** Zona всегда в космической (тёмной) теме — это часть бренда. */
 @Composable
 fun ZonaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) ZonaDarkColors else ZonaLightColors,
+        colorScheme = ZonaDarkColors,
         shapes = ZonaShapes,
         typography = Typography(),
         content = content,

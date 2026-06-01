@@ -4,49 +4,61 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// Бренд-палитра Zona: глубокий индиго + тёплый акцент.
-private val BrandIndigo = Color(0xFF4C5CE0)
-private val BrandIndigoDark = Color(0xFF8B97FF)
-private val BrandAccent = Color(0xFFFF7A59)
+// ░░ Космическая палитра Zona ░░
+// Глубокий космос + неоновая туманность (фиолетово-голубой) + звёздное золото.
+val CosmosViolet = Color(0xFF7C5CFF) // основной неон
+val CosmosVioletBright = Color(0xFFA68BFF)
+val CosmosCyan = Color(0xFF35E0F0) // акцент-голубой (звёзды/орбиты)
+val CosmosMagenta = Color(0xFFFF5DA2) // акцент-розовый (туманность)
+val CosmosGold = Color(0xFFFFC95C) // золото XP/наград
 
-val ZonaLightColors =
-    lightColorScheme(
-        primary = BrandIndigo,
-        onPrimary = Color.White,
-        primaryContainer = Color(0xFFE2E5FF),
-        onPrimaryContainer = Color(0xFF101A57),
-        secondary = BrandAccent,
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFFFE0D6),
-        onSecondaryContainer = Color(0xFF52160A),
-        background = Color(0xFFF7F8FC),
-        onBackground = Color(0xFF14151A),
-        surface = Color.White,
-        onSurface = Color(0xFF14151A),
-        surfaceVariant = Color(0xFFEDEFF5),
-        onSurfaceVariant = Color(0xFF595D6B),
-        outline = Color(0xFFC3C7D2),
-        error = Color(0xFFD92D20),
-        onError = Color.White,
-    )
+val SpaceVoid = Color(0xFF070912) // самый тёмный фон
+val SpaceDeep = Color(0xFF0C1024) // фон экранов
+val SpaceSurface = Color(0xFF141A33) // карточки
+val SpaceSurfaceHi = Color(0xFF1E2747) // приподнятые поверхности
+val SpaceOutline = Color(0xFF2C3760)
+val StarWhite = Color(0xFFEAF0FF)
+val StarDim = Color(0xFF9AA6CC)
 
 val ZonaDarkColors =
     darkColorScheme(
-        primary = BrandIndigoDark,
-        onPrimary = Color(0xFF101A57),
-        primaryContainer = Color(0xFF2B379C),
-        onPrimaryContainer = Color(0xFFE2E5FF),
-        secondary = BrandAccent,
-        onSecondary = Color(0xFF3A0F06),
-        secondaryContainer = Color(0xFF7A2E1A),
-        onSecondaryContainer = Color(0xFFFFE0D6),
-        background = Color(0xFF101117),
-        onBackground = Color(0xFFECEDF2),
-        surface = Color(0xFF181A22),
-        onSurface = Color(0xFFECEDF2),
-        surfaceVariant = Color(0xFF272A35),
-        onSurfaceVariant = Color(0xFFB7BBC8),
-        outline = Color(0xFF454959),
-        error = Color(0xFFFF6B5E),
-        onError = Color(0xFF3A0A06),
+        primary = CosmosViolet,
+        onPrimary = Color(0xFF0A0620),
+        primaryContainer = Color(0xFF2A2160),
+        onPrimaryContainer = Color(0xFFE5DEFF),
+        secondary = CosmosCyan,
+        onSecondary = Color(0xFF002429),
+        secondaryContainer = Color(0xFF123E45),
+        onSecondaryContainer = Color(0xFFB7F6FF),
+        tertiary = CosmosMagenta,
+        onTertiary = Color(0xFF2D0017),
+        background = SpaceDeep,
+        onBackground = StarWhite,
+        surface = SpaceSurface,
+        onSurface = StarWhite,
+        surfaceVariant = SpaceSurfaceHi,
+        onSurfaceVariant = StarDim,
+        outline = SpaceOutline,
+        error = Color(0xFFFF6B6B),
+        onError = Color(0xFF2A0000),
+    )
+
+// Светлая тема оставлена как «дневной космос» — на случай предпочтения системы.
+val ZonaLightColors =
+    lightColorScheme(
+        primary = Color(0xFF5B3FE0),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFE5DEFF),
+        onPrimaryContainer = Color(0xFF1B1148),
+        secondary = Color(0xFF0E7C8A),
+        onSecondary = Color.White,
+        background = Color(0xFFF3F4FB),
+        onBackground = Color(0xFF14151A),
+        surface = Color.White,
+        onSurface = Color(0xFF14151A),
+        surfaceVariant = Color(0xFFE9EAF4),
+        onSurfaceVariant = Color(0xFF565B70),
+        outline = Color(0xFFC3C7D8),
+        error = Color(0xFFD92D20),
+        onError = Color.White,
     )

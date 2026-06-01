@@ -21,4 +21,5 @@ data class User(
     val role: UserRole,
     val bio: String = "",
     val avatarUrl: String? = null,
+    val xp: Long = 0,
 )

@@ -81,6 +81,7 @@ class AuthService(
             role = role,
             bio = bio,
             avatarUrl = avatarUrl,
+            xp = xp,
         )
 
     companion object {
