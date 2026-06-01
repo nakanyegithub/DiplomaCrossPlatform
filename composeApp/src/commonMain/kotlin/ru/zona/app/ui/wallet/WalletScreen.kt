@@ -14,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +26,7 @@ import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaSecondaryButton
+import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.mvi.collectState
 import ru.zona.app.core.util.formatBalance
 import ru.zona.app.feature.wallet.WalletEffect
@@ -38,6 +42,7 @@ fun WalletScreen(
 ) {
     val state by store.collectState { eff -> when (eff) { is WalletEffect.Message -> onMessage(eff.text) } }
     LaunchedEffect(Unit) { store.dispatch(WalletIntent.Load) }
+    var customAmount by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
         ZonaTopBar(title = "Кошелёк", onBack = onBack)
@@ -54,9 +59,29 @@ fun WalletScreen(
                             Text("Демо-валюта для покупки курсов и занятий", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.weight(1f)) { ZonaSecondaryButton("+100 ₵", enabled = !state.busy) { store.dispatch(WalletIntent.TopUp(100_00)) } }
-                        Box(Modifier.weight(1f)) { ZonaPrimaryButton("+500 ₵", enabled = !state.busy) { store.dispatch(WalletIntent.TopUp(500_00)) } }
+                    ZonaCard(Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Пополнить баланс", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(100, 300, 500, 1000).forEach { amount ->
+                                    Box(Modifier.weight(1f)) {
+                                        ZonaSecondaryButton("+$amount", enabled = !state.busy) { store.dispatch(WalletIntent.TopUp(amount * 100L)) }
+                                    }
+                                }
+                            }
+                            Text("Своя сумма", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Box(Modifier.weight(1f)) {
+                                    ZonaTextField(customAmount, { customAmount = it.filter { c -> c.isDigit() }.take(7) }, "Сумма в ₵")
+                                }
+                                Box(Modifier.weight(1f)) {
+                                    ZonaPrimaryButton("Пополнить", enabled = !state.busy && (customAmount.toLongOrNull() ?: 0) > 0) {
+                                        customAmount.toLongOrNull()?.let { store.dispatch(WalletIntent.TopUp(it * 100)) }
+                                        customAmount = ""
+                                    }
+                                }
+                            }
+                        }
                     }
                     Text("История операций", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {

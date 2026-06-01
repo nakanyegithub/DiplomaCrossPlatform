@@ -34,13 +34,16 @@ import ru.zona.app.core.model.UserRole
 import ru.zona.app.feature.chat.ChatListStore
 import ru.zona.app.feature.chat.ChatStore
 import ru.zona.app.feature.flashcards.DecksStore
+import ru.zona.app.feature.flashcards.ManageDeckStore
 import ru.zona.app.feature.flashcards.StudyStore
 import ru.zona.app.feature.learning.presentation.AuthoringStore
 import ru.zona.app.feature.learning.presentation.CatalogStore
 import ru.zona.app.feature.learning.presentation.CourseDetailStore
+import ru.zona.app.feature.learning.presentation.CourseEditorStore
 import ru.zona.app.feature.learning.presentation.LessonStore
 import ru.zona.app.feature.profile.presentation.ProfileStore
 import ru.zona.app.feature.sessions.SessionsStore
+import ru.zona.app.feature.sessions.CreateSessionStore
 import ru.zona.app.feature.teacher.AdminStore
 import ru.zona.app.feature.teacher.ApplicationStore
 import ru.zona.app.feature.teacher.TeachersStore
@@ -49,14 +52,17 @@ import ru.zona.app.ui.ProfileScreen
 import ru.zona.app.ui.chat.ChatListScreen
 import ru.zona.app.ui.chat.ChatScreen
 import ru.zona.app.ui.flashcards.DecksScreen
+import ru.zona.app.ui.flashcards.ManageDeckScreen
 import ru.zona.app.ui.flashcards.StudyScreen
 import ru.zona.app.ui.learning.CatalogScreen
 import ru.zona.app.ui.learning.CourseDetailScreen
 import ru.zona.app.ui.learning.LessonScreen
+import ru.zona.app.ui.sessions.CreateSessionScreen
 import ru.zona.app.ui.sessions.SessionsScreen
 import ru.zona.app.ui.teacher.AdminScreen
 import ru.zona.app.ui.teacher.ApplicationScreen
 import ru.zona.app.ui.teacher.AuthoringScreen
+import ru.zona.app.ui.teacher.CourseEditorScreen
 import ru.zona.app.ui.teacher.TeachersScreen
 import ru.zona.app.ui.wallet.WalletScreen
 
@@ -79,12 +85,17 @@ fun MainShell(
             add(TabItem("cards", "Карточки", Icons.Default.Style))
             add(TabItem("sessions", "Занятия", Icons.Default.Event))
             add(TabItem("chat", "Чат", Icons.Default.Chat))
-            if (user.role == UserRole.TEACHER) add(TabItem("teach", "Создать", Icons.Outlined.Add))
+            if (user.role == UserRole.TEACHER) {
+                add(TabItem("teach", "Курсы+", Icons.Outlined.Add))
+                add(TabItem("host", "Провести", Icons.Default.Event))
+            }
             if (user.role == UserRole.ADMIN) add(TabItem("admin", "Модерация", Icons.Default.AdminPanelSettings))
             add(TabItem("profile", "Профиль", Icons.Default.Person))
         }
     }
     var tabId by rememberSaveable(user.role) { mutableStateOf(tabs.first().id) }
+
+    val canCreate = user.role == UserRole.TEACHER || user.role == UserRole.ADMIN
 
     // Stores (held across recompositions)
     val catalogStore = remember { CatalogStore(graph.learningRepository, scope) }
@@ -93,6 +104,7 @@ fun MainShell(
     val chatListStore = remember { ChatListStore(graph.chatRepository, scope) }
     val profileStore = remember(user.id) { ProfileStore(user, graph.profileRepository, scope) }
     val authoringStore = remember { AuthoringStore(graph.learningRepository, scope) }
+    val createSessionStore = remember { CreateSessionStore(graph.sessionRepository, scope) }
     val adminStore = remember { AdminStore(graph.teacherRepository, scope) }
 
     val overlay = nav.current
@@ -125,10 +137,16 @@ fun MainShell(
             } else {
                 when (tabId) {
                     "catalog" -> CatalogScreen(catalogStore) { c -> nav.push(Destination.CourseDetail(c.id, c.title)) }
-                    "cards" -> DecksScreen(decksStore) { d -> nav.push(Destination.Deck(d.id, d.title)) }
+                    "cards" -> DecksScreen(
+                        store = decksStore,
+                        canCreate = canCreate,
+                        onOpenDeck = { d -> nav.push(Destination.Deck(d.id, d.title)) },
+                        onManageDeck = { d -> nav.push(Destination.ManageDeck(d.id, d.title)) },
+                    )
                     "sessions" -> SessionsScreen(sessionsStore, onMessage)
                     "chat" -> ChatListScreen(chatListStore) { c -> nav.push(Destination.Chat(c.id, c.peerName)) }
-                    "teach" -> AuthoringScreen(authoringStore, onMessage)
+                    "teach" -> AuthoringScreen(authoringStore, onEditCourse = { id, title -> nav.push(Destination.CourseEditor(id, title)) }, onMessage = onMessage)
+                    "host" -> CreateSessionScreen(createSessionStore, onMessage)
                     "admin" -> AdminScreen(adminStore, onMessage)
                     "profile" ->
                         ProfileScreen(
@@ -187,6 +205,14 @@ private fun Overlay(
         Destination.Wallet -> {
             val store = remember { WalletStore(graph.walletRepository, scope) }
             WalletScreen(store, onBack = { nav.pop() }, onMessage = onMessage)
+        }
+        is Destination.CourseEditor -> {
+            val store = remember(dest.courseId) { CourseEditorStore(dest.courseId, graph.learningRepository, scope) }
+            CourseEditorScreen(dest.title, store, onBack = { nav.pop() }, onMessage = onMessage)
+        }
+        is Destination.ManageDeck -> {
+            val store = remember(dest.deckId) { ManageDeckStore(dest.deckId, graph.flashcardRepository, scope) }
+            ManageDeckScreen(dest.title, store, onBack = { nav.pop() }, onMessage = onMessage)
         }
         Destination.Authoring -> Unit
     }

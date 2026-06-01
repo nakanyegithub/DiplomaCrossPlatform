@@ -30,6 +30,7 @@ import ru.zona.app.feature.learning.presentation.AuthoringStore
 @Composable
 fun AuthoringScreen(
     store: AuthoringStore,
+    onEditCourse: (Long, String) -> Unit,
     onMessage: (String) -> Unit,
 ) {
     val state by store.collectState { eff -> when (eff) { is AuthoringEffect.Message -> onMessage(eff.text) } }
@@ -55,14 +56,14 @@ fun AuthoringScreen(
                 }
             }
             if (state.myCourses.isNotEmpty()) {
-                Text("Созданные курсы", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Созданные курсы (нажмите, чтобы добавить уроки)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 state.myCourses.forEach { c ->
-                    ZonaCard(Modifier.fillMaxWidth()) {
+                    ZonaCard(Modifier.fillMaxWidth(), onClick = { onEditCourse(c.id, c.title) }) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(c.coverEmoji, style = MaterialTheme.typography.headlineSmall)
                             Column(Modifier.weight(1f)) {
                                 Text(c.title, style = MaterialTheme.typography.titleSmall)
-                                Text("${c.lessonCount} уроков", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${c.lessonCount} уроков · нажмите для редактирования", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             ZonaBadge(formatPrice(c.priceCents))
                         }

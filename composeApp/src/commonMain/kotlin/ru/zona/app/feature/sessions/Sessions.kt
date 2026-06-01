@@ -109,3 +109,88 @@ class SessionsStore(private val repo: SessionRepository, scope: CoroutineScope) 
         }
     }
 }
+
+// --- Создание занятия (преподаватель) ---
+data class CreateSessionState(
+    val type: String = "GROUP",
+    val title: String = "",
+    val description: String = "",
+    val dayOffset: Int = 1, // через сколько дней
+    val hour: Int = 18,
+    val durationMinutes: Int = 60,
+    val capacity: Int = 6,
+    val priceText: String = "",
+    val saving: Boolean = false,
+    val mySessions: List<SessionDto> = emptyList(),
+)
+
+sealed interface CreateSessionIntent {
+    data object Load : CreateSessionIntent
+    data class SetType(val v: String) : CreateSessionIntent
+    data class SetTitle(val v: String) : CreateSessionIntent
+    data class SetDescription(val v: String) : CreateSessionIntent
+    data class SetDayOffset(val v: Int) : CreateSessionIntent
+    data class SetHour(val v: Int) : CreateSessionIntent
+    data class SetDuration(val v: Int) : CreateSessionIntent
+    data class SetCapacity(val v: Int) : CreateSessionIntent
+    data class SetPrice(val v: String) : CreateSessionIntent
+    data object Create : CreateSessionIntent
+}
+
+sealed interface CreateSessionEffect { data class Message(val text: String) : CreateSessionEffect }
+
+class CreateSessionStore(private val repo: SessionRepository, scope: CoroutineScope) :
+    MviStore<CreateSessionState, CreateSessionIntent, CreateSessionEffect>(CreateSessionState(), scope) {
+    override fun onIntent(intent: CreateSessionIntent) {
+        when (intent) {
+            CreateSessionIntent.Load -> load()
+            is CreateSessionIntent.SetType -> setState { it.copy(type = intent.v, capacity = if (intent.v == "INDIVIDUAL") 1 else 6) }
+            is CreateSessionIntent.SetTitle -> setState { it.copy(title = intent.v) }
+            is CreateSessionIntent.SetDescription -> setState { it.copy(description = intent.v) }
+            is CreateSessionIntent.SetDayOffset -> setState { it.copy(dayOffset = intent.v.coerceIn(0, 60)) }
+            is CreateSessionIntent.SetHour -> setState { it.copy(hour = intent.v.coerceIn(0, 23)) }
+            is CreateSessionIntent.SetDuration -> setState { it.copy(durationMinutes = intent.v.coerceIn(15, 240)) }
+            is CreateSessionIntent.SetCapacity -> setState { it.copy(capacity = intent.v.coerceIn(1, 100)) }
+            is CreateSessionIntent.SetPrice -> setState { it.copy(priceText = intent.v.filter { c -> c.isDigit() }) }
+            CreateSessionIntent.Create -> create()
+        }
+    }
+    private fun load() {
+        scope.launch {
+            when (val r = repo.teaching()) {
+                is Outcome.Success -> setState { it.copy(mySessions = r.data) }
+                is Outcome.Failure -> emit(CreateSessionEffect.Message(r.message))
+            }
+        }
+    }
+    private fun create() {
+        val st = currentState
+        if (st.saving || st.title.isBlank()) return
+        setState { it.copy(saving = true) }
+        scope.launch {
+            val dayMs = 86_400_000L
+            val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+            val base = now + st.dayOffset * dayMs
+            // выставляем час: округляем к началу дня + hour
+            val startsAt = base - (base % dayMs) + st.hour * 3_600_000L
+            val price = st.priceText.toLongOrNull()?.let { it * 100 }
+            val req = CreateSessionRequest(
+                type = st.type,
+                title = st.title.trim(),
+                description = st.description.trim(),
+                startsAt = startsAt,
+                durationMinutes = st.durationMinutes,
+                capacity = st.capacity,
+                priceCents = price,
+            )
+            when (val r = repo.create(req)) {
+                is Outcome.Success -> {
+                    setState { CreateSessionState(mySessions = it.mySessions) }
+                    emit(CreateSessionEffect.Message("Занятие «${r.data.title}» создано 🛰"))
+                    load()
+                }
+                is Outcome.Failure -> { setState { it.copy(saving = false) }; emit(CreateSessionEffect.Message(r.message)) }
+            }
+        }
+    }
+}

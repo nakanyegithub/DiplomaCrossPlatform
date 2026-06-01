@@ -28,10 +28,16 @@ import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaSecondaryButton
+import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.mvi.collectState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import ru.zona.app.feature.flashcards.DeckDto
 import ru.zona.app.feature.flashcards.DecksIntent
 import ru.zona.app.feature.flashcards.DecksStore
+import ru.zona.app.feature.flashcards.ManageDeckIntent
+import ru.zona.app.feature.flashcards.ManageDeckStore
 import ru.zona.app.feature.flashcards.StudyIntent
 import ru.zona.app.feature.flashcards.StudyStore
 import ru.zona.app.ui.common.ZonaTopBar
@@ -39,17 +45,31 @@ import ru.zona.app.ui.common.ZonaTopBar
 @Composable
 fun DecksScreen(
     store: DecksStore,
+    canCreate: Boolean,
     onOpenDeck: (DeckDto) -> Unit,
+    onManageDeck: (DeckDto) -> Unit,
 ) {
     val state by store.collectState()
     LaunchedEffect(Unit) { store.dispatch(DecksIntent.Load) }
+    var newDeck by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Карточки", "Запоминай слова интервальными повторениями")
+        if (canCreate) {
+            ZonaCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Новая колода", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    ZonaTextField(newDeck, { newDeck = it }, "Название колоды")
+                    ZonaPrimaryButton("Создать колоду", enabled = newDeck.isNotBlank()) {
+                        store.dispatch(DecksIntent.Create(newDeck.trim())); newDeck = ""
+                    }
+                }
+            }
+        }
         when {
             state.loading -> LoadingState()
             state.error != null -> MessageState("Ошибка", state.error!!, actionText = "Повторить", onAction = { store.dispatch(DecksIntent.Load) })
-            state.decks.isEmpty() -> MessageState("Пока нет колод", "Колоды появятся вместе с курсами")
+            state.decks.isEmpty() -> MessageState("Пока нет колод", if (canCreate) "Создайте первую колоду выше" else "Колоды появятся вместе с курсами")
             else ->
                 LazyColumn(
                     Modifier.fillMaxSize(),
@@ -58,17 +78,66 @@ fun DecksScreen(
                 ) {
                     items(state.decks, key = { it.id }) { deck ->
                         ZonaCard(Modifier.fillMaxWidth(), onClick = { onOpenDeck(deck) }) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("🃏", style = MaterialTheme.typography.headlineMedium)
-                                Column(Modifier.weight(1f)) {
-                                    Text(deck.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                    Text("${deck.cardCount} карточек", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text("🃏", style = MaterialTheme.typography.headlineMedium)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(deck.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                        Text("${deck.cardCount} карточек", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    if (deck.dueCount > 0) ZonaBadge("${deck.dueCount} к повтору", content = MaterialTheme.colorScheme.secondary)
                                 }
-                                if (deck.dueCount > 0) ZonaBadge("${deck.dueCount} к повтору", content = MaterialTheme.colorScheme.secondary)
+                                if (canCreate) {
+                                    ZonaSecondaryButton("Добавить карточки") { onManageDeck(deck) }
+                                }
                             }
                         }
                     }
                 }
+        }
+    }
+}
+
+@Composable
+fun ManageDeckScreen(
+    title: String,
+    store: ManageDeckStore,
+    onBack: () -> Unit,
+    onMessage: (String) -> Unit,
+) {
+    val state by store.collectState { eff -> when (eff) { is ru.zona.app.feature.flashcards.ManageDeckEffect.Message -> onMessage(eff.text) } }
+    LaunchedEffect(Unit) { store.dispatch(ManageDeckIntent.Load) }
+
+    Column(Modifier.fillMaxSize()) {
+        ZonaTopBar(title = "Колода: $title", onBack = onBack)
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                ZonaCard(Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Новая карточка", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        ZonaTextField(state.front, { store.dispatch(ManageDeckIntent.SetFront(it)) }, "Лицевая сторона (слово)")
+                        ZonaTextField(state.back, { store.dispatch(ManageDeckIntent.SetBack(it)) }, "Оборот (перевод)")
+                        ZonaPrimaryButton(if (state.saving) "Добавляем…" else "Добавить карточку", enabled = state.front.isNotBlank() && state.back.isNotBlank() && !state.saving) {
+                            store.dispatch(ManageDeckIntent.AddCard)
+                        }
+                    }
+                }
+            }
+            if (state.cards.isNotEmpty()) {
+                item { Text("Карточки (${state.cards.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+            }
+            items(state.cards, key = { it.id }) { c ->
+                ZonaCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(c.front, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(c.back, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         }
     }
 }

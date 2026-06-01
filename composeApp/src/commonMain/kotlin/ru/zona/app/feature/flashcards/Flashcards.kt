@@ -84,6 +84,57 @@ class DecksStore(private val repo: FlashcardRepository, scope: CoroutineScope) :
     }
 }
 
+// --- Deck management store (добавление карточек) ---
+data class ManageDeckState(
+    val loading: Boolean = true,
+    val cards: List<FlashcardDto> = emptyList(),
+    val front: String = "",
+    val back: String = "",
+    val saving: Boolean = false,
+    val error: String? = null,
+)
+
+sealed interface ManageDeckIntent {
+    data object Load : ManageDeckIntent
+    data class SetFront(val v: String) : ManageDeckIntent
+    data class SetBack(val v: String) : ManageDeckIntent
+    data object AddCard : ManageDeckIntent
+}
+
+sealed interface ManageDeckEffect { data class Message(val text: String) : ManageDeckEffect }
+
+class ManageDeckStore(private val deckId: Long, private val repo: FlashcardRepository, scope: CoroutineScope) :
+    MviStore<ManageDeckState, ManageDeckIntent, ManageDeckEffect>(ManageDeckState(), scope) {
+    override fun onIntent(intent: ManageDeckIntent) {
+        when (intent) {
+            ManageDeckIntent.Load -> load()
+            is ManageDeckIntent.SetFront -> setState { it.copy(front = intent.v) }
+            is ManageDeckIntent.SetBack -> setState { it.copy(back = intent.v) }
+            ManageDeckIntent.AddCard -> add()
+        }
+    }
+    private fun load() {
+        setState { it.copy(loading = true, error = null) }
+        scope.launch {
+            when (val r = repo.cards(deckId)) {
+                is Outcome.Success -> setState { it.copy(loading = false, cards = r.data) }
+                is Outcome.Failure -> setState { it.copy(loading = false, error = r.message) }
+            }
+        }
+    }
+    private fun add() {
+        val st = currentState
+        if (st.saving || st.front.isBlank() || st.back.isBlank()) return
+        setState { it.copy(saving = true) }
+        scope.launch {
+            when (val r = repo.addCard(deckId, st.front.trim(), st.back.trim())) {
+                is Outcome.Success -> { setState { it.copy(saving = false, front = "", back = "") }; emit(ManageDeckEffect.Message("Карточка добавлена")); load() }
+                is Outcome.Failure -> { setState { it.copy(saving = false) }; emit(ManageDeckEffect.Message(r.message)) }
+            }
+        }
+    }
+}
+
 // --- Study store ---
 data class StudyState(
     val loading: Boolean = true,
