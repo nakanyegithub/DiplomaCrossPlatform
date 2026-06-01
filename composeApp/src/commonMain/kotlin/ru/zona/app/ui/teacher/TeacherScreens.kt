@@ -93,6 +93,10 @@ fun ApplicationScreen(
     val state by store.collectState { eff -> when (eff) { is ru.zona.app.feature.teacher.ApplicationEffect.Message -> onMessage(eff.text) } }
     LaunchedEffect(Unit) { store.dispatch(ApplicationIntent.Load) }
 
+    val pickFile = ru.zona.app.core.media.rememberFilePicker { picked ->
+        if (picked != null) store.dispatch(ApplicationIntent.AttachFile(picked.name))
+    }
+
     Column(Modifier.fillMaxSize()) {
         ZonaTopBar(title = "Стать преподавателем", onBack = onBack)
         when {
@@ -123,7 +127,26 @@ fun ApplicationScreen(
                         Text("Расскажите о своём опыте и приложите документы (дипломы, сертификаты).", style = MaterialTheme.typography.bodyMedium)
                         ZonaTextField(state.headline, { store.dispatch(ApplicationIntent.SetHeadline(it)) }, "Кратко о себе (например: «Преподаватель английского, 5 лет»)")
                         ZonaTextField(state.motivation, { store.dispatch(ApplicationIntent.SetMotivation(it)) }, "Мотивация и опыт", singleLine = false, minLines = 4)
-                        ZonaTextField(state.docName, { store.dispatch(ApplicationIntent.SetDocName(it)) }, "Документ: название файла (например diploma.pdf)")
+
+                        ZonaCard(Modifier.fillMaxWidth()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Документы", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                if (state.attachedFiles.isEmpty()) {
+                                    Text("Файлы не прикреплены", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    state.attachedFiles.forEach { fileName ->
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text("📎 $fileName", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                            androidx.compose.material3.TextButton(onClick = { store.dispatch(ApplicationIntent.RemoveFile(fileName)) }) {
+                                                Text("Удалить", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                                            }
+                                        }
+                                    }
+                                }
+                                ZonaSecondaryButton("📎 Прикрепить файл") { pickFile() }
+                            }
+                        }
+
                         ZonaPrimaryButton(if (state.submitting) "Отправляем…" else "Отправить заявку", enabled = !state.submitting && state.motivation.isNotBlank()) {
                             store.dispatch(ApplicationIntent.Submit)
                         }

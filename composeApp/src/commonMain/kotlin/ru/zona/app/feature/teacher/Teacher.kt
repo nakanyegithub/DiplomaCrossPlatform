@@ -105,7 +105,7 @@ data class ApplicationState(
     val application: TeacherApplicationDto? = null,
     val motivation: String = "",
     val headline: String = "",
-    val docName: String = "",
+    val attachedFiles: List<String> = emptyList(),
     val submitting: Boolean = false,
     val error: String? = null,
 )
@@ -114,7 +114,8 @@ sealed interface ApplicationIntent {
     data object Load : ApplicationIntent
     data class SetMotivation(val v: String) : ApplicationIntent
     data class SetHeadline(val v: String) : ApplicationIntent
-    data class SetDocName(val v: String) : ApplicationIntent
+    data class AttachFile(val name: String) : ApplicationIntent
+    data class RemoveFile(val name: String) : ApplicationIntent
     data object Submit : ApplicationIntent
 }
 
@@ -127,7 +128,11 @@ class ApplicationStore(private val repo: TeacherRepository, scope: CoroutineScop
             ApplicationIntent.Load -> load()
             is ApplicationIntent.SetMotivation -> setState { it.copy(motivation = intent.v) }
             is ApplicationIntent.SetHeadline -> setState { it.copy(headline = intent.v) }
-            is ApplicationIntent.SetDocName -> setState { it.copy(docName = intent.v) }
+            is ApplicationIntent.AttachFile -> setState {
+                if (intent.name.isBlank() || intent.name in it.attachedFiles) it
+                else it.copy(attachedFiles = it.attachedFiles + intent.name)
+            }
+            is ApplicationIntent.RemoveFile -> setState { it.copy(attachedFiles = it.attachedFiles - intent.name) }
             ApplicationIntent.Submit -> submit()
         }
     }
@@ -145,7 +150,7 @@ class ApplicationStore(private val repo: TeacherRepository, scope: CoroutineScop
         if (st.submitting || st.motivation.isBlank()) return
         setState { it.copy(submitting = true) }
         scope.launch {
-            val docs = if (st.docName.isBlank()) emptyList() else listOf(DocInput(st.docName.trim()))
+            val docs = st.attachedFiles.map { DocInput(it) }
             when (val r = repo.submit(SubmitApplicationRequest(st.motivation.trim(), st.headline.trim(), docs))) {
                 is Outcome.Success -> { setState { it.copy(submitting = false, application = r.data) }; emit(ApplicationEffect.Message("Заявка отправлена ✨")) }
                 is Outcome.Failure -> { setState { it.copy(submitting = false) }; emit(ApplicationEffect.Message(r.message)) }
