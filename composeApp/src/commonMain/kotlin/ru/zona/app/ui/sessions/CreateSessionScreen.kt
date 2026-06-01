@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyColumn
@@ -90,17 +91,28 @@ fun CreateSessionScreen(
 
 @Composable
 private fun Stepper(label: String, value: Int, onChange: (Int) -> Unit, step: Int = 1) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         ZonaStepBtn("−") { onChange(value - step) }
-        Text("$value", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "$value",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.width(48.dp),
+        )
         ZonaStepBtn("+") { onChange(value + step) }
     }
 }
 
 @Composable
 private fun ZonaStepBtn(text: String, onClick: () -> Unit) {
-    androidx.compose.material3.OutlinedButton(onClick = onClick, modifier = Modifier.width(48.dp)) {
-        Text(text, style = MaterialTheme.typography.titleMedium)
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.size(44.dp),
+        shape = androidx.compose.foundation.shape.CircleShape,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+    ) {
+        Text(text, style = MaterialTheme.typography.titleLarge)
     }
 }
