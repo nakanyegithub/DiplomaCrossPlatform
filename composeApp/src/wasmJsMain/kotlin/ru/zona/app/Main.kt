@@ -2,12 +2,12 @@ package ru.zona.app
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
-import ru.zona.app.core.di.AppGraph
+import ru.zona.app.core.di.initKoin
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    val graph = AppGraph()
+    initKoin()
     ComposeViewport(viewportContainerId = "root") {
-        App(graph)
+        App()
     }
 }

@@ -19,6 +19,7 @@ import ru.zona.app.app.MainShell
 import ru.zona.app.app.RootEffect
 import ru.zona.app.app.RootIntent
 import ru.zona.app.app.RootStore
+import org.koin.compose.koinInject
 import ru.zona.app.core.design.CosmicBackground
 import ru.zona.app.core.design.ZonaTheme
 import ru.zona.app.core.di.AppGraph
@@ -28,7 +29,7 @@ import ru.zona.app.ui.AuthScreen
 import ru.zona.app.ui.SplashScreen
 
 @Composable
-fun App(graph: AppGraph) {
+fun App(graph: AppGraph = koinInject()) {
     ZonaTheme {
         val scope = rememberCoroutineScope()
         val snackbar = remember { SnackbarHostState() }
