@@ -41,12 +41,15 @@ data class WalletState(
     val loading: Boolean = true,
     val wallet: WalletDto? = null,
     val busy: Boolean = false,
+    val customAmount: String = "",
     val error: String? = null,
 )
 
 sealed interface WalletIntent {
     data object Load : WalletIntent
     data class TopUp(val amountCents: Long) : WalletIntent
+    data class SetCustomAmount(val value: String) : WalletIntent
+    data object TopUpCustom : WalletIntent
 }
 
 sealed interface WalletEffect { data class Message(val text: String) : WalletEffect }
@@ -59,6 +62,11 @@ class WalletStore(
         when (intent) {
             WalletIntent.Load -> load()
             is WalletIntent.TopUp -> topUp(intent.amountCents)
+            is WalletIntent.SetCustomAmount -> setState { it.copy(customAmount = intent.value.filter { c -> c.isDigit() }.take(7)) }
+            WalletIntent.TopUpCustom -> {
+                val amount = currentState.customAmount.toLongOrNull()
+                if (amount != null && amount > 0) { setState { it.copy(customAmount = "") }; topUp(amount * 100) }
+            }
         }
     }
 

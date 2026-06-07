@@ -30,9 +30,16 @@ import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaSecondaryButton
 import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.mvi.collectState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import org.jetbrains.compose.resources.stringResource
+import zona.resources.Res
+import zona.resources.action_retry
+import zona.resources.cards_create_deck
+import zona.resources.cards_deck_name
+import zona.resources.cards_empty
+import zona.resources.cards_new_deck
+import zona.resources.cards_subtitle
+import zona.resources.cards_title
+import zona.resources.state_error
 import ru.zona.app.feature.flashcards.DeckDto
 import ru.zona.app.feature.flashcards.DecksIntent
 import ru.zona.app.feature.flashcards.DecksStore
@@ -51,25 +58,27 @@ fun DecksScreen(
 ) {
     val state by store.collectState()
     LaunchedEffect(Unit) { store.dispatch(DecksIntent.Load) }
-    var newDeck by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Карточки", "Запоминай слова интервальными повторениями")
+        ScreenHeader(
+            stringResource(Res.string.cards_title),
+            stringResource(Res.string.cards_subtitle),
+        )
         if (canCreate) {
             ZonaCard(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Новая колода", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    ZonaTextField(newDeck, { newDeck = it }, "Название колоды")
-                    ZonaPrimaryButton("Создать колоду", enabled = newDeck.isNotBlank()) {
-                        store.dispatch(DecksIntent.Create(newDeck.trim())); newDeck = ""
+                    Text(stringResource(Res.string.cards_new_deck), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    ZonaTextField(state.newDeckTitle, { store.dispatch(DecksIntent.SetNewDeckTitle(it)) }, stringResource(Res.string.cards_deck_name))
+                    ZonaPrimaryButton(stringResource(Res.string.cards_create_deck), enabled = state.newDeckTitle.isNotBlank()) {
+                        store.dispatch(DecksIntent.Create)
                     }
                 }
             }
         }
         when {
             state.loading -> LoadingState()
-            state.error != null -> MessageState("Ошибка", state.error!!, actionText = "Повторить", onAction = { store.dispatch(DecksIntent.Load) })
-            state.decks.isEmpty() -> MessageState("Пока нет колод", if (canCreate) "Создайте первую колоду выше" else "Колоды появятся вместе с курсами")
+            state.error != null -> MessageState(stringResource(Res.string.state_error), state.error!!, actionText = stringResource(Res.string.action_retry), onAction = { store.dispatch(DecksIntent.Load) })
+            state.decks.isEmpty() -> MessageState(stringResource(Res.string.cards_empty), if (canCreate) "Создайте первую колоду выше" else "Колоды появятся вместе с курсами")
             else ->
                 LazyColumn(
                     Modifier.fillMaxSize(),

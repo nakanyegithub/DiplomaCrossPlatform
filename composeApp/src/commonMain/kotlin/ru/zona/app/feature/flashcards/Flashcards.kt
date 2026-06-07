@@ -53,8 +53,17 @@ class FlashcardRepositoryImpl(private val api: FlashcardApi) : FlashcardReposito
 }
 
 // --- Decks list store ---
-data class DecksState(val loading: Boolean = true, val decks: List<DeckDto> = emptyList(), val error: String? = null)
-sealed interface DecksIntent { data object Load : DecksIntent; data class Create(val title: String) : DecksIntent }
+data class DecksState(
+    val loading: Boolean = true,
+    val decks: List<DeckDto> = emptyList(),
+    val newDeckTitle: String = "",
+    val error: String? = null,
+)
+sealed interface DecksIntent {
+    data object Load : DecksIntent
+    data class SetNewDeckTitle(val value: String) : DecksIntent
+    data object Create : DecksIntent
+}
 sealed interface DecksEffect { data class Message(val text: String) : DecksEffect }
 
 class DecksStore(private val repo: FlashcardRepository, scope: CoroutineScope) :
@@ -62,7 +71,8 @@ class DecksStore(private val repo: FlashcardRepository, scope: CoroutineScope) :
     override fun onIntent(intent: DecksIntent) {
         when (intent) {
             DecksIntent.Load -> load()
-            is DecksIntent.Create -> create(intent.title)
+            is DecksIntent.SetNewDeckTitle -> setState { it.copy(newDeckTitle = intent.value) }
+            DecksIntent.Create -> create()
         }
     }
     private fun load() {
@@ -74,10 +84,12 @@ class DecksStore(private val repo: FlashcardRepository, scope: CoroutineScope) :
             }
         }
     }
-    private fun create(title: String) {
+    private fun create() {
+        val title = currentState.newDeckTitle.trim()
+        if (title.isBlank()) return
         scope.launch {
             when (val r = repo.createDeck(title)) {
-                is Outcome.Success -> { emit(DecksEffect.Message("Колода создана")); load() }
+                is Outcome.Success -> { setState { it.copy(newDeckTitle = "") }; emit(DecksEffect.Message("Колода создана")); load() }
                 is Outcome.Failure -> emit(DecksEffect.Message(r.message))
             }
         }
