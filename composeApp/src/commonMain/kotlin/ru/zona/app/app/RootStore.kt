@@ -14,12 +14,23 @@ data class RootState(
     val phase: AppPhase = AppPhase.Splash,
     val user: User? = null,
     val busy: Boolean = false,
-)
+    // Состояние формы входа/регистрации — источник правды в сторе, не в экране.
+    val registerMode: Boolean = false,
+    val email: String = "",
+    val password: String = "",
+    val displayName: String = "",
+) {
+    val canSubmit: Boolean
+        get() = email.isNotBlank() && password.isNotBlank() && (!registerMode || displayName.isNotBlank()) && !busy
+}
 
 sealed interface RootIntent {
     data object Bootstrap : RootIntent
-    data class Login(val email: String, val password: String) : RootIntent
-    data class Register(val email: String, val password: String, val displayName: String) : RootIntent
+    data class SetEmail(val value: String) : RootIntent
+    data class SetPassword(val value: String) : RootIntent
+    data class SetDisplayName(val value: String) : RootIntent
+    data object ToggleRegisterMode : RootIntent
+    data object Submit : RootIntent
     data object Logout : RootIntent
     data class UpdateUser(val user: User) : RootIntent
 }
@@ -36,9 +47,11 @@ class RootStore(
     override fun onIntent(intent: RootIntent) {
         when (intent) {
             RootIntent.Bootstrap -> bootstrap()
-            is RootIntent.Login -> authenticate { authRepository.login(intent.email, intent.password) }
-            is RootIntent.Register ->
-                authenticate { authRepository.register(intent.email, intent.password, intent.displayName) }
+            is RootIntent.SetEmail -> setState { it.copy(email = intent.value) }
+            is RootIntent.SetPassword -> setState { it.copy(password = intent.value) }
+            is RootIntent.SetDisplayName -> setState { it.copy(displayName = intent.value) }
+            RootIntent.ToggleRegisterMode -> setState { it.copy(registerMode = !it.registerMode) }
+            RootIntent.Submit -> submit()
             RootIntent.Logout -> logout()
             is RootIntent.UpdateUser -> setState { it.copy(user = intent.user) }
         }
@@ -68,13 +81,17 @@ class RootStore(
         private const val BOOTSTRAP_TIMEOUT_MS = 8_000L
     }
 
-    private fun authenticate(call: suspend () -> Outcome<User>) {
-        if (currentState.busy) return
+    private fun submit() {
+        val s = currentState
+        if (s.busy || !s.canSubmit) return
         setState { it.copy(busy = true) }
         scope.launch {
-            when (val r = call()) {
+            val r =
+                if (s.registerMode) authRepository.register(s.email, s.password, s.displayName)
+                else authRepository.login(s.email, s.password)
+            when (r) {
                 is Outcome.Success ->
-                    setState { it.copy(busy = false, user = r.data, phase = AppPhase.Home) }
+                    setState { it.copy(busy = false, user = r.data, phase = AppPhase.Home, email = "", password = "", displayName = "") }
                 is Outcome.Failure -> {
                     setState { it.copy(busy = false) }
                     emit(RootEffect.Message(r.message))

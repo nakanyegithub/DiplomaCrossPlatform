@@ -12,10 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -25,28 +21,34 @@ import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaTextField
 import zona.resources.Res
 import zona.resources.app_name
+import zona.resources.auth_create_account
 import zona.resources.auth_email
 import zona.resources.auth_login
 import zona.resources.auth_name
 import zona.resources.auth_password
+import zona.resources.auth_please_wait
 import zona.resources.auth_register
 import zona.resources.auth_to_login
 import zona.resources.auth_to_register
+import zona.resources.auth_welcome_back
 
+/**
+ * Глупый экран: только рисует state и шлёт интенты. Состояние формы живёт в RootStore.
+ */
 @Composable
 fun AuthScreen(
+    registerMode: Boolean,
+    email: String,
+    password: String,
+    displayName: String,
     busy: Boolean,
-    onLogin: (email: String, password: String) -> Unit,
-    onRegister: (email: String, password: String, displayName: String) -> Unit,
+    canSubmit: Boolean,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onNameChange: (String) -> Unit,
+    onToggleMode: () -> Unit,
+    onSubmit: () -> Unit,
 ) {
-    var registerMode by remember { mutableStateOf(false) }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var name by remember { mutableStateOf("") }
-
-    val canSubmit =
-        email.isNotBlank() && password.isNotBlank() && (!registerMode || name.isNotBlank()) && !busy
-
     Column(
         Modifier
             .fillMaxSize()
@@ -63,26 +65,26 @@ fun AuthScreen(
         ) {
             Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.displaySmall)
             Text(
-                if (registerMode) "Создайте аккаунт" else "С возвращением",
+                stringResource(if (registerMode) Res.string.auth_create_account else Res.string.auth_welcome_back),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
             if (registerMode) {
-                ZonaTextField(name, { name = it }, stringResource(Res.string.auth_name))
+                ZonaTextField(displayName, onNameChange, stringResource(Res.string.auth_name))
             }
-            ZonaTextField(email, { email = it }, stringResource(Res.string.auth_email))
-            ZonaTextField(password, { password = it }, stringResource(Res.string.auth_password), isPassword = true)
+            ZonaTextField(email, onEmailChange, stringResource(Res.string.auth_email))
+            ZonaTextField(password, onPasswordChange, stringResource(Res.string.auth_password), isPassword = true)
 
             ZonaPrimaryButton(
-                text = if (busy) "Подождите…" else stringResource(if (registerMode) Res.string.auth_register else Res.string.auth_login),
+                text = if (busy) stringResource(Res.string.auth_please_wait)
+                else stringResource(if (registerMode) Res.string.auth_register else Res.string.auth_login),
                 enabled = canSubmit,
-            ) {
-                if (registerMode) onRegister(email, password, name) else onLogin(email, password)
-            }
+                onClick = onSubmit,
+            )
 
-            TextButton(onClick = { registerMode = !registerMode }) {
+            TextButton(onClick = onToggleMode) {
                 Text(stringResource(if (registerMode) Res.string.auth_to_login else Res.string.auth_to_register))
             }
         }

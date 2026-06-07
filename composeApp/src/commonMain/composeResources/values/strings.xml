@@ -19,6 +19,9 @@
     <string name="auth_name">Имя</string>
     <string name="auth_to_register">Нет аккаунта? Регистрация</string>
     <string name="auth_to_login">Уже есть аккаунт? Войти</string>
+    <string name="auth_create_account">Создайте аккаунт</string>
+    <string name="auth_welcome_back">С возвращением</string>
+    <string name="auth_please_wait">Подождите…</string>
 
     <!-- Профиль -->
     <string name="profile_title">Профиль</string>
@@ -74,4 +77,85 @@
     <string name="wallet_balance">Баланс</string>
     <string name="wallet_topup">Пополнить</string>
     <string name="wallet_history">История операций</string>
+    <string name="wallet_demo_hint">Демо-валюта для покупки курсов и занятий</string>
+    <string name="wallet_topup_title">Пополнить баланс</string>
+    <string name="wallet_custom_amount">Своя сумма</string>
+    <string name="wallet_amount_hint">Сумма в ₵</string>
+
+    <!-- Каталог/курс -->
+    <string name="catalog_empty_mine">Вы ещё не записались на курсы</string>
+    <string name="catalog_empty_all">Курсы не найдены</string>
+    <string name="course_program">Программа курса</string>
+    <string name="course_enroll">Записаться</string>
+    <string name="course_enrolled">Вы записаны ✓</string>
+    <string name="course_teacher_prefix">Преподаватель:</string>
+    <string name="lessons_soon">Уроки скоро появятся.</string>
+
+    <!-- Карточки -->
+    <string name="cards_title">Карточки</string>
+    <string name="cards_subtitle">Запоминай слова интервальными повторениями</string>
+    <string name="cards_new_deck">Новая колода</string>
+    <string name="cards_deck_name">Название колоды</string>
+    <string name="cards_create_deck">Создать колоду</string>
+    <string name="cards_add_cards">Добавить карточки</string>
+    <string name="cards_empty">Пока нет колод</string>
+    <string name="cards_count">карточек</string>
+    <string name="cards_due">к повтору</string>
+    <string name="cards_new_card">Новая карточка</string>
+    <string name="cards_front">Лицевая сторона (слово)</string>
+    <string name="cards_back">Оборот (перевод)</string>
+    <string name="cards_add_card">Добавить карточку</string>
+    <string name="cards_remember">Помню ✓</string>
+    <string name="cards_forgot">Не помню</string>
+    <string name="cards_flip_hint">Нажмите на карточку, чтобы перевернуть</string>
+    <string name="cards_deck_done">Колода пройдена! 🌟</string>
+
+    <!-- Занятия -->
+    <string name="session_individual">Индивидуально</string>
+    <string name="session_group">Группа</string>
+    <string name="session_send_request">Отправить заявку</string>
+    <string name="session_book">Записаться</string>
+    <string name="session_create_title">Провести занятие</string>
+    <string name="session_name">Название занятия</string>
+    <string name="session_description">Описание</string>
+    <string name="session_pick_date">Дата</string>
+    <string name="session_pick_time">Время</string>
+    <string name="session_duration">Длительность занятия</string>
+    <string name="session_hours">Часы</string>
+    <string name="session_minutes">Минуты</string>
+    <string name="session_capacity">Количество мест</string>
+    <string name="session_seats">Мест</string>
+    <string name="session_price_hint">Цена в ₵ (пусто = бесплатно)</string>
+    <string name="session_create">Создать занятие</string>
+    <string name="session_my">Мои занятия</string>
+    <string name="requests_title">Заявки на занятия</string>
+    <string name="requests_empty">Нет заявок</string>
+    <string name="requests_accept">Принять</string>
+    <string name="requests_decline">Отклонить</string>
+
+    <!-- Профиль -->
+    <string name="profile_save">Сохранить</string>
+    <string name="profile_saving">Сохранение…</string>
+    <string name="profile_cancel">Отмена</string>
+
+    <!-- Преподаватели/админ -->
+    <string name="teachers_title">Преподаватели</string>
+    <string name="teachers_subtitle">Найдите наставника для своей миссии</string>
+    <string name="teacher_write">Написать</string>
+    <string name="admin_title">Модерация заявок</string>
+    <string name="admin_subtitle">Заявки кандидатов в преподаватели</string>
+    <string name="admin_approve">Одобрить</string>
+    <string name="admin_reject">Отклонить</string>
+
+    <!-- Курс-редактор -->
+    <string name="editor_new_lesson">Новый урок</string>
+    <string name="editor_lesson_name">Название урока</string>
+    <string name="editor_add_lesson">Добавить урок</string>
+    <string name="editor_new_exercise">Новое упражнение</string>
+    <string name="editor_prompt">Вопрос / задание</string>
+    <string name="editor_correct_answer">Правильный ответ</string>
+    <string name="editor_add_exercise">Добавить упражнение</string>
+    <string name="exercise_check">Проверить</string>
+    <string name="exercise_next">Дальше</string>
+    <string name="lesson_done">Урок пройден! 🌟</string>
 </resources>

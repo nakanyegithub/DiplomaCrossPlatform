@@ -52,9 +52,17 @@ fun App(graph: AppGraph = koinInject()) {
                         AppPhase.Splash -> SplashScreen()
                         AppPhase.Auth ->
                             AuthScreen(
+                                registerMode = state.registerMode,
+                                email = state.email,
+                                password = state.password,
+                                displayName = state.displayName,
                                 busy = state.busy,
-                                onLogin = { e, p -> root.dispatch(RootIntent.Login(e, p)) },
-                                onRegister = { e, p, n -> root.dispatch(RootIntent.Register(e, p, n)) },
+                                canSubmit = state.canSubmit,
+                                onEmailChange = { root.dispatch(RootIntent.SetEmail(it)) },
+                                onPasswordChange = { root.dispatch(RootIntent.SetPassword(it)) },
+                                onNameChange = { root.dispatch(RootIntent.SetDisplayName(it)) },
+                                onToggleMode = { root.dispatch(RootIntent.ToggleRegisterMode) },
+                                onSubmit = { root.dispatch(RootIntent.Submit) },
                             )
                         AppPhase.Home ->
                             state.user?.let { user ->
