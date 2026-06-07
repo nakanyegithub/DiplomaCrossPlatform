@@ -35,8 +35,27 @@ import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.model.User
 import ru.zona.app.core.model.UserRole
 import ru.zona.app.core.mvi.collectState
+import org.jetbrains.compose.resources.stringResource
 import zona.resources.Res
+import zona.resources.action_delete
+import zona.resources.profile_become_teacher
+import zona.resources.profile_bio_empty
+import zona.resources.profile_cancel
+import zona.resources.profile_certificate_attach
+import zona.resources.profile_certificates_empty
+import zona.resources.profile_certificates_title
+import zona.resources.profile_change_photo
+import zona.resources.profile_edit
+import zona.resources.profile_field_bio
+import zona.resources.profile_field_name
+import zona.resources.profile_logout
+import zona.resources.profile_role_admin
+import zona.resources.profile_role_student
+import zona.resources.profile_role_teacher
+import zona.resources.profile_save
+import zona.resources.profile_saving
 import zona.resources.profile_title
+import zona.resources.profile_wallet
 import ru.zona.app.feature.profile.presentation.ProfileEffect
 import ru.zona.app.feature.profile.presentation.ProfileIntent
 import ru.zona.app.feature.profile.presentation.ProfileStore
@@ -83,9 +102,9 @@ fun ProfileScreen(
 
     val user = state.user
     val roleLabel = when (user.role) {
-        UserRole.STUDENT -> "Ученик"
-        UserRole.TEACHER -> "Преподаватель"
-        UserRole.ADMIN -> "Администратор"
+        UserRole.STUDENT -> stringResource(Res.string.profile_role_student)
+        UserRole.TEACHER -> stringResource(Res.string.profile_role_teacher)
+        UserRole.ADMIN -> stringResource(Res.string.profile_role_admin)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -122,44 +141,41 @@ fun ProfileScreen(
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Avatar(base64 = state.avatarUrl.ifBlank { null }, name = state.displayName, size = 110.dp, modifier = Modifier.clickable { pickAvatar() })
-                            ZonaSecondaryButton("Сменить фото") { pickAvatar() }
-                            if (state.avatarUrl.isNotBlank()) {
-                                Text("Нажмите, чтобы заменить", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            ZonaSecondaryButton(stringResource(Res.string.profile_change_photo)) { pickAvatar() }
                         }
                     }
-                    ZonaTextField(state.displayName, { store.dispatch(ProfileIntent.SetDisplayName(it)) }, "Имя")
-                    ZonaTextField(state.bio, { store.dispatch(ProfileIntent.SetBio(it)) }, "О себе", singleLine = false, minLines = 3)
-                    ZonaPrimaryButton(if (state.saving) "Сохранение…" else "Сохранить", enabled = state.displayName.isNotBlank() && !state.saving) {
+                    ZonaTextField(state.displayName, { store.dispatch(ProfileIntent.SetDisplayName(it)) }, stringResource(Res.string.profile_field_name))
+                    ZonaTextField(state.bio, { store.dispatch(ProfileIntent.SetBio(it)) }, stringResource(Res.string.profile_field_bio), singleLine = false, minLines = 3)
+                    ZonaPrimaryButton(if (state.saving) stringResource(Res.string.profile_saving) else stringResource(Res.string.profile_save), enabled = state.displayName.isNotBlank() && !state.saving) {
                         store.dispatch(ProfileIntent.Save)
                     }
-                    ZonaSecondaryButton("Отмена", enabled = !state.saving) { store.dispatch(ProfileIntent.CancelEdit) }
+                    ZonaSecondaryButton(stringResource(Res.string.profile_cancel), enabled = !state.saving) { store.dispatch(ProfileIntent.CancelEdit) }
                 } else {
                     // Сертификаты — доступны всегда, в т.ч. преподавателю.
                     ZonaCard(Modifier.fillMaxWidth()) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Мои сертификаты и документы", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(Res.string.profile_certificates_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             if (certState.items.isEmpty()) {
-                                Text("Пока ничего не прикреплено", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(Res.string.profile_certificates_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 certState.items.forEach { c ->
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                         Text("📎 ${c.fileName}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                                         androidx.compose.material3.TextButton(onClick = { certificatesStore.dispatch(ru.zona.app.feature.profile.CertificatesIntent.Remove(c.id)) }) {
-                                            Text("Удалить", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                                            Text(stringResource(Res.string.action_delete), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                                         }
                                     }
                                 }
                             }
-                            ZonaSecondaryButton("📎 Прикрепить сертификат") { pickCertificate() }
+                            ZonaSecondaryButton(stringResource(Res.string.profile_certificate_attach)) { pickCertificate() }
                         }
                     }
-                    ZonaPrimaryButton("Редактировать профиль") { store.dispatch(ProfileIntent.StartEdit) }
-                    ZonaSecondaryButton("Кошелёк") { onOpenWallet() }
+                    ZonaPrimaryButton(stringResource(Res.string.profile_edit)) { store.dispatch(ProfileIntent.StartEdit) }
+                    ZonaSecondaryButton(stringResource(Res.string.profile_wallet)) { onOpenWallet() }
                     if (user.role == UserRole.STUDENT) {
-                        ZonaSecondaryButton("Стать преподавателем") { onBecomeTeacher() }
+                        ZonaSecondaryButton(stringResource(Res.string.profile_become_teacher)) { onBecomeTeacher() }
                     }
-                    ZonaSecondaryButton("Выйти из аккаунта") { onLogout() }
+                    ZonaSecondaryButton(stringResource(Res.string.profile_logout)) { onLogout() }
                 }
             }
         }
