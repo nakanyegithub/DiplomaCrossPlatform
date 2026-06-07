@@ -132,6 +132,8 @@
     <string name="requests_empty">Нет заявок</string>
     <string name="requests_accept">Принять</string>
     <string name="requests_decline">Отклонить</string>
+    <string name="sessions_empty_mine">Вы пока никуда не записались</string>
+    <string name="sessions_empty_all">Нет запланированных занятий</string>
 
     <!-- Профиль -->
     <string name="profile_save">Сохранить</string>

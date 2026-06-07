@@ -26,9 +26,24 @@ import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.mvi.collectState
+import org.jetbrains.compose.resources.stringResource
 import zona.resources.Res
+import zona.resources.action_retry
+import zona.resources.session_book
+import zona.resources.session_send_request
+import zona.resources.sessions_booked
+import zona.resources.sessions_create
+import zona.resources.sessions_delete
+import zona.resources.sessions_empty_all
+import zona.resources.sessions_empty_mine
+import zona.resources.sessions_pending
+import zona.resources.sessions_requests
 import zona.resources.sessions_subtitle
+import zona.resources.sessions_tab_mine
+import zona.resources.sessions_tab_upcoming
 import zona.resources.sessions_title
+import zona.resources.state_empty
+import zona.resources.state_error
 import ru.zona.app.core.util.formatDateTime
 import ru.zona.app.core.util.formatPrice
 import ru.zona.app.feature.sessions.SessionDto
@@ -56,18 +71,18 @@ fun SessionsScreen(
         )
         if (canCreate) {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ZonaPrimaryButton("➕ Провести занятие", onClick = onCreate)
-                ru.zona.app.core.design.ZonaSecondaryButton("📩 Заявки на индивидуальные занятия", onClick = onOpenRequests)
+                ZonaPrimaryButton(stringResource(Res.string.sessions_create), onClick = onCreate)
+                ru.zona.app.core.design.ZonaSecondaryButton(stringResource(Res.string.sessions_requests), onClick = onOpenRequests)
             }
         }
         TabRow(selectedTabIndex = if (state.tab == SessionsTab.Upcoming) 0 else 1, containerColor = MaterialTheme.colorScheme.background) {
-            Tab(selected = state.tab == SessionsTab.Upcoming, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Upcoming)) }, text = { Text("Ближайшие") })
-            Tab(selected = state.tab == SessionsTab.Mine, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Mine)) }, text = { Text("Мои записи") })
+            Tab(selected = state.tab == SessionsTab.Upcoming, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Upcoming)) }, text = { Text(stringResource(Res.string.sessions_tab_upcoming)) })
+            Tab(selected = state.tab == SessionsTab.Mine, onClick = { store.dispatch(SessionsIntent.SetTab(SessionsTab.Mine)) }, text = { Text(stringResource(Res.string.sessions_tab_mine)) })
         }
         when {
             state.loading -> LoadingState()
-            state.error != null -> MessageState("Ошибка", state.error!!, actionText = "Повторить", onAction = { store.dispatch(SessionsIntent.Load) })
-            state.sessions.isEmpty() -> MessageState("Пусто", if (state.tab == SessionsTab.Mine) "Вы пока никуда не записались" else "Нет запланированных занятий")
+            state.error != null -> MessageState(stringResource(Res.string.state_error), state.error!!, actionText = stringResource(Res.string.action_retry), onAction = { store.dispatch(SessionsIntent.Load) })
+            state.sessions.isEmpty() -> MessageState(stringResource(Res.string.state_empty), stringResource(if (state.tab == SessionsTab.Mine) Res.string.sessions_empty_mine else Res.string.sessions_empty_all))
             else ->
                 LazyColumn(
                     Modifier.fillMaxSize(),
@@ -102,11 +117,11 @@ private fun SessionCard(s: SessionDto, mine: Boolean, onBook: () -> Unit, onDele
                 ZonaBadge(formatPrice(s.priceCents))
             }
             when {
-                mine -> ru.zona.app.core.design.ZonaSecondaryButton("🗑 Удалить занятие", onClick = onDelete)
-                s.myStatus == "BOOKED" -> ZonaBadge("Вы записаны ✓", content = MaterialTheme.colorScheme.secondary)
-                s.myStatus == "PENDING" -> ZonaBadge("⏳ Заявка на рассмотрении", content = MaterialTheme.colorScheme.tertiary)
+                mine -> ru.zona.app.core.design.ZonaSecondaryButton(stringResource(Res.string.sessions_delete), onClick = onDelete)
+                s.myStatus == "BOOKED" -> ZonaBadge(stringResource(Res.string.sessions_booked), content = MaterialTheme.colorScheme.secondary)
+                s.myStatus == "PENDING" -> ZonaBadge(stringResource(Res.string.sessions_pending), content = MaterialTheme.colorScheme.tertiary)
                 else -> ZonaPrimaryButton(
-                    if (s.type == "INDIVIDUAL") "Отправить заявку · ${formatPrice(s.priceCents)}" else "Записаться · ${formatPrice(s.priceCents)}",
+                    (if (s.type == "INDIVIDUAL") stringResource(Res.string.session_send_request) else stringResource(Res.string.session_book)) + " · " + formatPrice(s.priceCents),
                     onClick = onBook,
                 )
             }
