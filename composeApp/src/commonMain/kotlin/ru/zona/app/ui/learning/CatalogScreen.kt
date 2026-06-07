@@ -27,6 +27,9 @@ import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.mvi.collectState
+import zona.resources.Res
+import zona.resources.catalog_subtitle
+import zona.resources.catalog_title
 import ru.zona.app.core.util.formatPrice
 import ru.zona.app.feature.learning.data.CourseDto
 import ru.zona.app.feature.learning.presentation.CatalogIntent
@@ -44,7 +47,10 @@ fun CatalogScreen(
     LaunchedEffect(Unit) { store.dispatch(CatalogIntent.Load) }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Каталог курсов", "Выбери курс и отправляйся в путешествие")
+        ScreenHeader(
+            org.jetbrains.compose.resources.stringResource(Res.string.catalog_title),
+            org.jetbrains.compose.resources.stringResource(Res.string.catalog_subtitle),
+        )
         if (canCreate) {
             Row(Modifier.padding(horizontal = 20.dp)) {
                 ru.zona.app.core.design.ZonaPrimaryButton("➕ Создать / мои курсы", onClick = onManageCourses)

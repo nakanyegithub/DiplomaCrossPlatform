@@ -26,6 +26,9 @@ import ru.zona.app.core.design.ZonaBadge
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.mvi.collectState
+import zona.resources.Res
+import zona.resources.sessions_subtitle
+import zona.resources.sessions_title
 import ru.zona.app.core.util.formatDateTime
 import ru.zona.app.core.util.formatPrice
 import ru.zona.app.feature.sessions.SessionDto
@@ -47,7 +50,10 @@ fun SessionsScreen(
     LaunchedEffect(Unit) { store.dispatch(SessionsIntent.Load) }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Занятия", "Групповые и индивидуальные уроки в прямом эфире")
+        ScreenHeader(
+            org.jetbrains.compose.resources.stringResource(Res.string.sessions_title),
+            org.jetbrains.compose.resources.stringResource(Res.string.sessions_subtitle),
+        )
         if (canCreate) {
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ZonaPrimaryButton("➕ Провести занятие", onClick = onCreate)

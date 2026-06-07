@@ -34,6 +34,8 @@ import ru.zona.app.core.design.MessageState
 import ru.zona.app.core.design.ScreenHeader
 import ru.zona.app.core.design.ZonaCard
 import ru.zona.app.core.mvi.collectState
+import zona.resources.Res
+import zona.resources.chat_title
 import ru.zona.app.feature.chat.ChatIntent
 import ru.zona.app.feature.chat.ChatListIntent
 import ru.zona.app.feature.chat.ChatListStore
@@ -50,7 +52,10 @@ fun ChatListScreen(
     LaunchedEffect(Unit) { store.dispatch(ChatListIntent.Load) }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Сообщения", "Общайтесь с преподавателями и учениками")
+        ScreenHeader(
+            org.jetbrains.compose.resources.stringResource(Res.string.chat_title),
+            "Общайтесь с преподавателями и учениками",
+        )
         when {
             state.loading -> LoadingState()
             state.error != null -> MessageState("Ошибка", state.error!!, actionText = "Повторить", onAction = { store.dispatch(ChatListIntent.Load) })

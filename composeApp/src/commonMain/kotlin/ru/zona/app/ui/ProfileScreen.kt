@@ -35,6 +35,8 @@ import ru.zona.app.core.design.ZonaTextField
 import ru.zona.app.core.model.User
 import ru.zona.app.core.model.UserRole
 import ru.zona.app.core.mvi.collectState
+import zona.resources.Res
+import zona.resources.profile_title
 import ru.zona.app.feature.profile.presentation.ProfileEffect
 import ru.zona.app.feature.profile.presentation.ProfileIntent
 import ru.zona.app.feature.profile.presentation.ProfileStore
@@ -87,7 +89,7 @@ fun ProfileScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Профиль", user.email)
+        ScreenHeader(org.jetbrains.compose.resources.stringResource(Res.string.profile_title), user.email)
         if (state.refreshing && !state.editing) {
             LoadingState(Modifier.weight(1f))
         } else {
