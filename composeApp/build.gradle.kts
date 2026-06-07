@@ -97,6 +97,12 @@ android {
     }
 }
 
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "zona.resources"
+    generateResClass = always
+}
+
 compose.desktop {
     application {
         mainClass = "ru.zona.app.MainKt"

@@ -20,8 +20,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
 import ru.zona.app.core.design.ZonaPrimaryButton
 import ru.zona.app.core.design.ZonaTextField
+import zona.resources.Res
+import zona.resources.app_name
+import zona.resources.auth_email
+import zona.resources.auth_login
+import zona.resources.auth_name
+import zona.resources.auth_password
+import zona.resources.auth_register
+import zona.resources.auth_to_login
+import zona.resources.auth_to_register
 
 @Composable
 fun AuthScreen(
@@ -51,7 +61,7 @@ fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Zona", style = MaterialTheme.typography.displaySmall)
+            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.displaySmall)
             Text(
                 if (registerMode) "Создайте аккаунт" else "С возвращением",
                 style = MaterialTheme.typography.bodyLarge,
@@ -60,22 +70,20 @@ fun AuthScreen(
             )
 
             if (registerMode) {
-                ZonaTextField(name, { name = it }, "Имя")
+                ZonaTextField(name, { name = it }, stringResource(Res.string.auth_name))
             }
-            ZonaTextField(email, { email = it }, "Email")
-            ZonaTextField(password, { password = it }, "Пароль", isPassword = true)
+            ZonaTextField(email, { email = it }, stringResource(Res.string.auth_email))
+            ZonaTextField(password, { password = it }, stringResource(Res.string.auth_password), isPassword = true)
 
             ZonaPrimaryButton(
-                text = if (busy) "Подождите…" else if (registerMode) "Зарегистрироваться" else "Войти",
+                text = if (busy) "Подождите…" else stringResource(if (registerMode) Res.string.auth_register else Res.string.auth_login),
                 enabled = canSubmit,
             ) {
                 if (registerMode) onRegister(email, password, name) else onLogin(email, password)
             }
 
             TextButton(onClick = { registerMode = !registerMode }) {
-                Text(
-                    if (registerMode) "Уже есть аккаунт? Войти" else "Нет аккаунта? Зарегистрироваться",
-                )
+                Text(stringResource(if (registerMode) Res.string.auth_to_login else Res.string.auth_to_register))
             }
         }
     }

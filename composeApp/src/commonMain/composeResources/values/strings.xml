@@ -1,0 +1,77 @@
+<resources>
+    <!-- Общие -->
+    <string name="app_name">Zona</string>
+    <string name="action_retry">Повторить</string>
+    <string name="action_back">Назад</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_delete">Удалить</string>
+    <string name="action_ok">ОК</string>
+    <string name="state_loading">Загрузка…</string>
+    <string name="state_error">Ошибка</string>
+    <string name="state_empty">Пусто</string>
+
+    <!-- Авторизация -->
+    <string name="auth_login">Войти</string>
+    <string name="auth_register">Зарегистрироваться</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_name">Имя</string>
+    <string name="auth_to_register">Нет аккаунта? Регистрация</string>
+    <string name="auth_to_login">Уже есть аккаунт? Войти</string>
+
+    <!-- Профиль -->
+    <string name="profile_title">Профиль</string>
+    <string name="profile_edit">Редактировать профиль</string>
+    <string name="profile_wallet">Кошелёк</string>
+    <string name="profile_become_teacher">Стать преподавателем</string>
+    <string name="profile_logout">Выйти из аккаунта</string>
+    <string name="profile_role_student">Ученик</string>
+    <string name="profile_role_teacher">Преподаватель</string>
+    <string name="profile_role_admin">Администратор</string>
+    <string name="profile_bio_empty">Биография не заполнена</string>
+    <string name="profile_change_photo">Сменить фото</string>
+    <string name="profile_field_name">Имя</string>
+    <string name="profile_field_bio">О себе</string>
+    <string name="profile_certificates_title">Мои сертификаты и документы</string>
+    <string name="profile_certificates_empty">Пока ничего не прикреплено</string>
+    <string name="profile_certificate_attach">📎 Прикрепить сертификат</string>
+
+    <!-- Навигация -->
+    <string name="tab_courses">Курсы</string>
+    <string name="tab_cards">Карты</string>
+    <string name="tab_sessions">Занятия</string>
+    <string name="tab_chat">Чат</string>
+    <string name="tab_admin">Заявки</string>
+    <string name="tab_profile">Профиль</string>
+
+    <!-- Курсы -->
+    <string name="catalog_title">Каталог курсов</string>
+    <string name="catalog_subtitle">Выбери курс и отправляйся в путешествие</string>
+    <string name="catalog_create_manage">➕ Создать / мои курсы</string>
+    <string name="catalog_tab_all">Все курсы</string>
+    <string name="catalog_tab_mine">Мои курсы</string>
+    <string name="catalog_search">Поиск курса или языка</string>
+
+    <!-- Занятия -->
+    <string name="sessions_title">Занятия</string>
+    <string name="sessions_subtitle">Групповые и индивидуальные уроки в прямом эфире</string>
+    <string name="sessions_create">➕ Провести занятие</string>
+    <string name="sessions_requests">📩 Заявки на индивидуальные занятия</string>
+    <string name="sessions_tab_upcoming">Ближайшие</string>
+    <string name="sessions_tab_mine">Мои записи</string>
+    <string name="sessions_booked">Вы записаны ✓</string>
+    <string name="sessions_pending">⏳ Заявка на рассмотрении</string>
+    <string name="sessions_delete">🗑 Удалить занятие</string>
+
+    <!-- Чат -->
+    <string name="chat_title">Сообщения</string>
+    <string name="chat_input_hint">Сообщение…</string>
+    <string name="chat_send">Отправить</string>
+
+    <!-- Кошелёк -->
+    <string name="wallet_title">Кошелёк</string>
+    <string name="wallet_balance">Баланс</string>
+    <string name="wallet_topup">Пополнить</string>
+    <string name="wallet_history">История операций</string>
+</resources>

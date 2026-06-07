@@ -29,6 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import zona.resources.Res
+import zona.resources.tab_admin
+import zona.resources.tab_cards
+import zona.resources.tab_chat
+import zona.resources.tab_courses
+import zona.resources.tab_profile
+import zona.resources.tab_sessions
 import ru.zona.app.core.di.AppGraph
 import ru.zona.app.core.model.User
 import ru.zona.app.core.model.UserRole
@@ -68,7 +75,7 @@ import ru.zona.app.ui.teacher.TeachersScreen
 import ru.zona.app.ui.teacher.TeacherProfileScreen
 import ru.zona.app.ui.wallet.WalletScreen
 
-private data class TabItem(val id: String, val label: String, val icon: ImageVector)
+private data class TabItem(val id: String, val label: org.jetbrains.compose.resources.StringResource, val icon: ImageVector)
 
 @Composable
 fun MainShell(
@@ -83,12 +90,12 @@ fun MainShell(
 
     val tabs = remember(user.role) {
         buildList {
-            add(TabItem("catalog", "Курсы", Icons.Default.School))
-            add(TabItem("cards", "Карты", Icons.Default.Style))
-            add(TabItem("sessions", "Занятия", Icons.Default.Event))
-            add(TabItem("chat", "Чат", Icons.Default.Chat))
-            if (user.role == UserRole.ADMIN) add(TabItem("admin", "Заявки", Icons.Default.AdminPanelSettings))
-            add(TabItem("profile", "Профиль", Icons.Default.Person))
+            add(TabItem("catalog", Res.string.tab_courses, Icons.Default.School))
+            add(TabItem("cards", Res.string.tab_cards, Icons.Default.Style))
+            add(TabItem("sessions", Res.string.tab_sessions, Icons.Default.Event))
+            add(TabItem("chat", Res.string.tab_chat, Icons.Default.Chat))
+            if (user.role == UserRole.ADMIN) add(TabItem("admin", Res.string.tab_admin, Icons.Default.AdminPanelSettings))
+            add(TabItem("profile", Res.string.tab_profile, Icons.Default.Person))
         }
     }
     var tabId by rememberSaveable(user.role) { mutableStateOf(tabs.first().id) }
@@ -125,10 +132,10 @@ fun MainShell(
                         NavigationBarItem(
                             selected = tabId == tab.id,
                             onClick = { tabId = tab.id },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            icon = { Icon(tab.icon, contentDescription = org.jetbrains.compose.resources.stringResource(tab.label)) },
                             label = {
                                 Text(
-                                    tab.label,
+                                    org.jetbrains.compose.resources.stringResource(tab.label),
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Visible,
