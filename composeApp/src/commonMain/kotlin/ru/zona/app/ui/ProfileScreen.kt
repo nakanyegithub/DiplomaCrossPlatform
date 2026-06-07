@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.zona.app.core.media.Avatar
+import ru.zona.app.core.media.rememberFilePicker
 import ru.zona.app.core.media.rememberImagePicker
 import ru.zona.app.core.design.LoadingState
 import ru.zona.app.core.design.ScreenHeader
@@ -42,6 +43,7 @@ import ru.zona.app.feature.profile.presentation.ProfileStore
 fun ProfileScreen(
     store: ProfileStore,
     walletRepository: ru.zona.app.feature.wallet.WalletRepository,
+    certificatesStore: ru.zona.app.feature.profile.CertificatesStore,
     onUserUpdated: (User) -> Unit,
     onMessage: (String) -> Unit,
     onOpenWallet: () -> Unit,
@@ -54,7 +56,16 @@ fun ProfileScreen(
             is ProfileEffect.Saved -> onUserUpdated(effect.user)
         }
     }
-    LaunchedEffect(Unit) { store.dispatch(ProfileIntent.Refresh) }
+    val certState by certificatesStore.collectState { eff ->
+        when (eff) { is ru.zona.app.feature.profile.CertificatesEffect.Message -> onMessage(eff.text) }
+    }
+    LaunchedEffect(Unit) {
+        store.dispatch(ProfileIntent.Refresh)
+        certificatesStore.dispatch(ru.zona.app.feature.profile.CertificatesIntent.Load)
+    }
+    val pickCertificate = rememberFilePicker { picked ->
+        if (picked != null) certificatesStore.dispatch(ru.zona.app.feature.profile.CertificatesIntent.Add(picked.name))
+    }
 
     var balanceCents by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(state.user.id, state.user.xp) {
@@ -122,6 +133,25 @@ fun ProfileScreen(
                     }
                     ZonaSecondaryButton("Отмена", enabled = !state.saving) { store.dispatch(ProfileIntent.CancelEdit) }
                 } else {
+                    // Сертификаты — доступны всегда, в т.ч. преподавателю.
+                    ZonaCard(Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Мои сертификаты и документы", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            if (certState.items.isEmpty()) {
+                                Text("Пока ничего не прикреплено", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } else {
+                                certState.items.forEach { c ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                        Text("📎 ${c.fileName}", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                        androidx.compose.material3.TextButton(onClick = { certificatesStore.dispatch(ru.zona.app.feature.profile.CertificatesIntent.Remove(c.id)) }) {
+                                            Text("Удалить", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                            ZonaSecondaryButton("📎 Прикрепить сертификат") { pickCertificate() }
+                        }
+                    }
                     ZonaPrimaryButton("Редактировать профиль") { store.dispatch(ProfileIntent.StartEdit) }
                     ZonaSecondaryButton("Кошелёк") { onOpenWallet() }
                     if (user.role == UserRole.STUDENT) {

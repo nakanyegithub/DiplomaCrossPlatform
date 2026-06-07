@@ -22,6 +22,8 @@ import ru.zona.server.feature.sessions.SessionService
 import ru.zona.server.feature.sessions.sessionRoutes
 import ru.zona.server.feature.teacher.TeacherService
 import ru.zona.server.feature.teacher.teacherRoutes
+import ru.zona.server.feature.profile.CertificateService
+import ru.zona.server.feature.profile.certificateRoutes
 import ru.zona.server.feature.wallet.WalletService
 import ru.zona.server.feature.wallet.walletRoutes
 import ru.zona.server.plugins.configurePlugins
@@ -54,6 +56,7 @@ fun Application.module(config: ServerConfig) {
     val chatService = ChatService()
     val sessionService = SessionService(walletService, chatService)
     val teacherService = TeacherService()
+    val certificateService = CertificateService()
 
     ZonaSeed.seedIfEmpty(authDao, learningService, flashcardService, sessionService, walletService)
 
@@ -66,5 +69,6 @@ fun Application.module(config: ServerConfig) {
         sessionRoutes(sessionService)
         chatRoutes(chatService)
         teacherRoutes(teacherService)
+        certificateRoutes(certificateService)
     }
 }

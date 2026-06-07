@@ -41,6 +41,8 @@ class AppGraph(
 
     val authRepository: AuthRepository = AuthRepositoryImpl(AuthApi(httpClient, baseUrl), tokenStorage)
     val profileRepository: ProfileRepository = ProfileRepositoryImpl(ProfileApi(httpClient, baseUrl))
+    val certificateRepository: ru.zona.app.feature.profile.CertificateRepository =
+        ru.zona.app.feature.profile.CertificateRepositoryImpl(ru.zona.app.feature.profile.CertificateApi(httpClient, baseUrl))
     val learningRepository: LearningRepository = LearningRepositoryImpl(LearningApi(httpClient, baseUrl))
     val walletRepository: WalletRepository = WalletRepositoryImpl(WalletApi(httpClient, baseUrl))
     val flashcardRepository: FlashcardRepository = FlashcardRepositoryImpl(FlashcardApi(httpClient, baseUrl))

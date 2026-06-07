@@ -10,6 +10,7 @@ object Tables {
                 Users,
                 TeacherApplications,
                 TeacherApplicationDocs,
+                UserCertificates,
                 Wallets,
                 WalletTransactions,
                 Courses,
@@ -63,6 +64,15 @@ object TeacherApplicationDocs : Table("teacher_application_docs") {
     val applicationId = long("application_id").references(TeacherApplications.id)
     val fileName = varchar("file_name", 512)
     val description = varchar("description", 1024).default("")
+    override val primaryKey = PrimaryKey(id)
+}
+
+/** Сертификаты/документы пользователя в профиле (доступны всегда, в т.ч. преподавателю). */
+object UserCertificates : Table("user_certificates") {
+    val id = long("id").autoIncrement()
+    val userId = long("user_id").references(Users.id)
+    val fileName = varchar("file_name", 512)
+    val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)
 }
 

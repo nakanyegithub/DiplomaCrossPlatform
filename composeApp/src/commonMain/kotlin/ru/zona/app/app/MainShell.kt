@@ -101,6 +101,7 @@ fun MainShell(
     val sessionsStore = remember { SessionsStore(graph.sessionRepository, scope) }
     val chatListStore = remember { ChatListStore(graph.chatRepository, scope) }
     val profileStore = remember(user.id) { ProfileStore(user, graph.profileRepository, scope) }
+    val certificatesStore = remember(user.id) { ru.zona.app.feature.profile.CertificatesStore(graph.certificateRepository, scope) }
     val adminStore = remember { AdminStore(graph.teacherRepository, scope) }
 
     // Открыть (или создать) диалог с пользователем и перейти в чат.
@@ -176,6 +177,7 @@ fun MainShell(
                         ProfileScreen(
                             store = profileStore,
                             walletRepository = graph.walletRepository,
+                            certificatesStore = certificatesStore,
                             onUserUpdated = onUserUpdated,
                             onMessage = onMessage,
                             onOpenWallet = { nav.push(Destination.Wallet) },
